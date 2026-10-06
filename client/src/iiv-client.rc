@@ -1,0 +1,68 @@
+#pragma code_page(65001)
+#include <windows.h>
+#include <commctrl.h>
+#include "resource.h"
+
+LANGUAGE LANG_NEUTRAL, SUBLANG_NEUTRAL
+CREATEPROCESS_MANIFEST_RESOURCE_ID RT_MANIFEST "iiv-client.manifest"
+
+LANGUAGE LANG_JAPANESE, SUBLANG_DEFAULT
+IDI_APP ICON "iiv-client.ico"
+
+// ------------------------------------------------------------------
+//  接続の画面
+// ------------------------------------------------------------------
+IDD_CONNECT DIALOGEX 0, 0, 280, 222
+STYLE DS_SHELLFONT | DS_CENTER | DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
+EXSTYLE WS_EX_APPWINDOW
+CAPTION "iiv-client"
+FONT 9, "Yu Gothic UI", 400, 0, 0x80
+BEGIN
+    LTEXT           "接続先", IDC_H_CONNECT, 12, 9, 200, 11
+    LTEXT           "サーバー(&S):", -1, 12, 28, 70, 9
+    COMBOBOX        IDC_HOST, 84, 26, 184, 120, CBS_DROPDOWN | CBS_AUTOHSCROLL | WS_VSCROLL | WS_TABSTOP
+    LTEXT           "例: 192.168.1.10、pc-name(ポート 5960)、host:5961", IDC_HINT, 84, 41, 184, 9, SS_NOPREFIX
+    LTEXT           "パスワード(&P):", -1, 12, 57, 70, 9
+    EDITTEXT        IDC_PASSWORD, 84, 55, 110, 13, ES_PASSWORD | ES_AUTOHSCROLL
+    AUTOCHECKBOX    "覚える(&R)", IDC_SAVEPW, 200, 56, 68, 10
+    LTEXT           "画質(&Q):", -1, 12, 77, 70, 9
+    COMBOBOX        IDC_QUALITY, 84, 75, 184, 80, CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+    LTEXT           "描画(&G):", -1, 12, 95, 70, 9
+    COMBOBOX        IDC_RENDER, 84, 93, 184, 60, CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+    AUTOCHECKBOX    "見るだけ(キー・マウスを送らない)(&V)", IDC_VIEWONLY, 84, 113, 184, 10
+    AUTOCHECKBOX    "全画面で開く(&F)", IDC_FULLSCREEN, 84, 127, 184, 10
+    AUTOCHECKBOX    "つないでいる間はスリープさせず、画面も消さない(&Z)", IDC_NOSLEEP, 84, 141, 184, 10
+    LTEXT           "", IDC_ERROR, 12, 158, 256, 36, SS_NOPREFIX
+
+    PUSHBUTTON      "", IDC_FWREMOVE, 12, 202, 136, 14
+    DEFPUSHBUTTON   "接続(&O)", IDOK, 156, 202, 54, 14
+    PUSHBUTTON      "キャンセル", IDCANCEL, 214, 202, 54, 14
+END
+
+// ------------------------------------------------------------------
+//  版
+// ------------------------------------------------------------------
+VS_VERSION_INFO VERSIONINFO
+FILEVERSION     1, 0, 0, 0
+PRODUCTVERSION  1, 0, 0, 0
+FILEOS          VOS_NT_WINDOWS32
+FILETYPE        VFT_APP
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "041104B0"
+        BEGIN
+            VALUE "CompanyName",      "iosxi"
+            VALUE "FileDescription",  "iiv-client (リモート デスクトップ)"
+            VALUE "FileVersion",      "1.0.0"
+            VALUE "InternalName",     "iiv-client"
+            VALUE "OriginalFilename", "iiv-client.exe"
+            VALUE "ProductName",      "iiv"
+            VALUE "ProductVersion",   "1.0.0"
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x0411, 1200
+    END
+END

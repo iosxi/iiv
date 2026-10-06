@@ -1,0 +1,4 @@
+build/
+*.obj
+src/*.aps
+__pycache__/
