@@ -11,6 +11,7 @@
 - リリースの添付物: **`iiv-client.exe`**。改名せず、そのまま `gh release create` に渡す。
 - バージョン: タグの `vN` とは別に、`src/iiv-client.rc` の VERSIONINFO、`src/iiv-client.manifest` の
   `assemblyIdentity`、`src/iivc.h` の `APP_VERSION` がある。機能が変わったら全部上げる。
+- `src/iivc.h` の `APP_RELEASE`(L"vN")は接続の画面と表示の窓のタイトルに出る。**リリースのたびにタグと同じ vN にする。**
 - 前身は `../iivnc-client`(VNC のビューア。そのまま残す)。
 
 ### exe を変更したとき

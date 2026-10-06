@@ -37,7 +37,9 @@
 #include "iivproto.h"
 
 #define APP_NAME      L"iiv-client"
-#define APP_VERSION   L"1.2.0"
+#define APP_VERSION   L"1.3.0"
+#define APP_RELEASE   L"v4"             /* リリースのタグ(タイトルに出す。リリースのたびに上げる) */
+#define APP_TITLE     APP_NAME L" " APP_RELEASE
 
 #define WM_APP_CONNECTED  (WM_APP + 1)  /* 初期化まで済んだ */
 #define WM_APP_FRAME      (WM_APP + 2)  /* フレームを 1 つ復号した */

@@ -46,7 +46,7 @@
 #define TIMER_BARHIDE 4                 /* 帯から離れたら消す */
 #define BAR_CLASS    L"iiv.Client.Bar"
 
-enum { IDB_RESTORE = 0x180, IDB_MENU, IDB_MIN, IDB_CLOSE };
+enum { IDB_RESTORE = 0x180, IDB_MENU, IDB_MIN, IDB_CLOSE, IDB_STATS };
 
 enum {
     IDM_FULLSCREEN = 0x100, IDM_FIT, IDM_ACTUAL, IDM_Q_HIGH, IDM_Q_LOSSLESS, IDM_Q_NORMAL, IDM_Q_LOW,
@@ -615,9 +615,9 @@ static void initial_size(void)
 void view_set_title(void)
 {
     WCHAR t[512];
-    if (!g_connected) _snwprintf(t, ARRAYSIZE(t), L"%s に接続しています - iiv-client", g_params.host);
-    else if (g_cfg.showStats && g_statText[0]) _snwprintf(t, ARRAYSIZE(t), L"%s - iiv-client  [%s]", g_rm.name, g_statText);
-    else _snwprintf(t, ARRAYSIZE(t), L"%s - iiv-client%s", g_rm.name, g_params.viewOnly ? L"(見るだけ)" : L"");
+    if (!g_connected) _snwprintf(t, ARRAYSIZE(t), L"%s に接続しています - %s", g_params.host, APP_TITLE);
+    else if (g_cfg.showStats && g_statText[0]) _snwprintf(t, ARRAYSIZE(t), L"%s - %s  [%s]", g_rm.name, APP_TITLE, g_statText);
+    else _snwprintf(t, ARRAYSIZE(t), L"%s - %s%s", g_rm.name, APP_TITLE, g_params.viewOnly ? L"(見るだけ)" : L"");
     t[ARRAYSIZE(t) - 1] = 0;
     SetWindowTextW(g_view, t);
 }
@@ -685,6 +685,10 @@ static LRESULT CALLBACK bar_proc(HWND h, UINT msg, WPARAM wp, LPARAM lp)
         FillRect((HDC)wp, &r, g_barBrush);
         return 1;
     }
+    case WM_CTLCOLORSTATIC:             /* 速さの文字: 帯の色の上に明るい灰色で */
+        SetTextColor((HDC)wp, RGB(220, 220, 220));
+        SetBkColor((HDC)wp, RGB(43, 43, 43));
+        return (LRESULT)g_barBrush;
     case WM_CTLCOLORBTN:
         return (LRESULT)g_barBrush;
     case WM_MOUSEACTIVATE:
@@ -731,14 +735,27 @@ static void bar_show(BOOL show)
             SendMessageW(b, WM_SETFONT, (WPARAM)g_barFont, FALSE);
             SetWindowTheme(b, L"DarkMode_Explorer", NULL);
         }
+        {
+            /* 速さ(「速さを表示」のときだけ出す。stats_tick が書き換える) */
+            HWND st = CreateWindowExW(0, L"STATIC", L"", WS_CHILD | SS_LEFT | SS_CENTERIMAGE | SS_NOPREFIX,
+                                      0, 0, 10, 10, g_bar, (HMENU)(INT_PTR)IDB_STATS, g_inst, NULL);
+            SendMessageW(st, WM_SETFONT, (WPARAM)g_barFont, FALSE);
+        }
     }
     for (i = 0; i < (int)ARRAYSIZE(k_btn); i++) total += MulDiv(k_btn[i].w, (int)dpi, 96) + pad;
+    if (g_cfg.showStats) total += MulDiv(170, (int)dpi, 96) + pad;
     total += pad;
     x = pad;
     for (i = 0; i < (int)ARRAYSIZE(k_btn); i++) {
         int w = MulDiv(k_btn[i].w, (int)dpi, 96);
         SetWindowPos(GetDlgItem(g_bar, k_btn[i].id), NULL, x, pad / 2, w, bh - pad, SWP_NOZORDER | SWP_NOACTIVATE);
         x += w + pad;
+    }
+    {
+        HWND st = GetDlgItem(g_bar, IDB_STATS);
+        SetWindowTextW(st, g_statText);
+        SetWindowPos(st, NULL, x + pad, pad / 2, MulDiv(170, (int)dpi, 96) - pad, bh - pad, SWP_NOZORDER | SWP_NOACTIVATE);
+        ShowWindow(st, g_cfg.showStats ? SW_SHOWNOACTIVATE : SW_HIDE);
     }
     mi.cbSize = sizeof(mi);
     GetMonitorInfoW(MonitorFromWindow(g_view, MONITOR_DEFAULTTONEAREST), &mi);
@@ -1180,6 +1197,7 @@ static void command(int id)
         g_cfg.showStats = !g_cfg.showStats;
         config_save();
         view_set_title();
+        if (g_bar && IsWindowVisible(g_bar)) bar_show(TRUE);    /* 出ている帯も並べ直す */
         break;
     case IDM_DISCONNECT: PostMessageW(g_view, WM_CLOSE, 0, 0); break;
     case IDM_RENDER_GDI: case IDM_RENDER_GPU: set_render(id == IDM_RENDER_GDI); break;
@@ -1334,7 +1352,10 @@ static void stats_tick(void)
     g_statUpdates = up;
     g_statBytes = by;
     g_statPresented = g_presented;
-    if (g_cfg.showStats) view_set_title();
+    if (g_cfg.showStats) {
+        view_set_title();
+        if (g_bar && IsWindowVisible(g_bar)) SetDlgItemTextW(g_bar, IDB_STATS, g_statText);   /* 全画面の帯にも */
+    }
 }
 
 static LRESULT CALLBACK view_proc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp)
@@ -1604,7 +1625,7 @@ HWND view_create(void)
     wc.hCursor = NULL;
     wc.lpszClassName = VIEW_CLASS;
     RegisterClassExW(&wc);
-    g_view = CreateWindowExW(0, VIEW_CLASS, L"iiv-client", WS_OVERLAPPEDWINDOW | WS_CLIPCHILDREN,
+    g_view = CreateWindowExW(0, VIEW_CLASS, APP_TITLE, WS_OVERLAPPEDWINDOW | WS_CLIPCHILDREN,
                              CW_USEDEFAULT, CW_USEDEFAULT, 640, 400, NULL, NULL, g_inst, NULL);
     if (g_view) {
         BOOL dark = theme_is_dark();

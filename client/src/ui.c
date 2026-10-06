@@ -90,6 +90,7 @@ static INT_PTR CALLBACK dlg_proc(HWND dlg, UINT msg, WPARAM wp, LPARAM lp)
         LOGFONTW lf;
         HFONT    base = (HFONT)SendMessageW(dlg, WM_GETFONT, 0, 0);
         RECT     r, pad = { 0, 0, 0, 7 };
+        SetWindowTextW(dlg, APP_TITLE);
         int      i;
         (void)lp;
         SendMessageW(dlg, WM_SETICON, ICON_SMALL, (LPARAM)LoadImageW(g_inst, MAKEINTRESOURCEW(IDI_APP), IMAGE_ICON,
