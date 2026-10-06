@@ -43,8 +43,8 @@ END
 //  版
 // ------------------------------------------------------------------
 VS_VERSION_INFO VERSIONINFO
-FILEVERSION     1, 1, 0, 0
-PRODUCTVERSION  1, 1, 0, 0
+FILEVERSION     1, 2, 0, 0
+PRODUCTVERSION  1, 2, 0, 0
 FILEOS          VOS_NT_WINDOWS32
 FILETYPE        VFT_APP
 BEGIN
@@ -54,11 +54,11 @@ BEGIN
         BEGIN
             VALUE "CompanyName",      "iosxi"
             VALUE "FileDescription",  "iiv-client (リモート デスクトップ)"
-            VALUE "FileVersion",      "1.1.0"
+            VALUE "FileVersion",      "1.2.0"
             VALUE "InternalName",     "iiv-client"
             VALUE "OriginalFilename", "iiv-client.exe"
             VALUE "ProductName",      "iiv"
-            VALUE "ProductVersion",   "1.1.0"
+            VALUE "ProductVersion",   "1.2.0"
         END
     END
     BLOCK "VarFileInfo"

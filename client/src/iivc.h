@@ -37,7 +37,7 @@
 #include "iivproto.h"
 
 #define APP_NAME      L"iiv-client"
-#define APP_VERSION   L"1.1.0"
+#define APP_VERSION   L"1.2.0"
 
 #define WM_APP_CONNECTED  (WM_APP + 1)  /* 初期化まで済んだ */
 #define WM_APP_FRAME      (WM_APP + 2)  /* フレームを 1 つ復号した */
@@ -133,7 +133,6 @@ typedef struct Remote {
     volatile LONG64 bytes;
     volatile LONG   updates;    /* 復号したフレームの数 */
     volatile LONG64 decodeTicks;
-    double  latMs;              /* 相手の画面に出てから、ここで受け取るまで(同じ PC のときだけ意味がある) */
 } Remote;
 
 extern Remote g_rm;

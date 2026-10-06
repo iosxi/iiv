@@ -1327,8 +1327,8 @@ static void stats_tick(void)
     LONG   up = g_rm.updates;
     LONG64 by = g_rm.bytes;
     if (el < 500) return;
-    _snwprintf(g_statText, ARRAYSIZE(g_statText), L"%.1f fps  %.1f Mbps  遅れ %.1fms", (g_presented - g_statPresented) * 1000.0 / el,
-               (double)(by - g_statBytes) * 8.0 / el / 1000.0, g_rm.latMs);
+    _snwprintf(g_statText, ARRAYSIZE(g_statText), L"%.1f fps  %.1f Mbps", (g_presented - g_statPresented) * 1000.0 / el,
+               (double)(by - g_statBytes) * 8.0 / el / 1000.0);
     g_statText[ARRAYSIZE(g_statText) - 1] = 0;
     g_statTick = now;
     g_statUpdates = up;

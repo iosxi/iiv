@@ -409,7 +409,6 @@ static BOOL video_frame(const BYTE *p, unsigned n)
     AcquireSRWLockExclusive(&g_rm.lock);
     g_rm.frameNo = vh.frame;
     g_rm.frameRecvQpc = t0;
-    if (vh.presentQpc && g_qpf) g_rm.latMs = (t1 - vh.presentQpc) * 1000.0 / (double)g_qpf;
     if (!g_rm.framePosted) {
         g_rm.framePosted = TRUE;
         PostMessageW(g_notify, WM_APP_FRAME, 0, 0);
@@ -480,7 +479,6 @@ static BOOL message_loop(void)
             if (n >= sizeof(IivVideoConfig)) {
                 IivVideoConfig vc;
                 memcpy(&vc, p, sizeof(vc));
-                if (vc.qpcFreq) g_qpf = vc.qpcFreq;
                 if (!video_config(&vc)) return FALSE;
             }
             break;
@@ -665,7 +663,6 @@ void conn_start(const ConnParams *p, HWND notify)
     g_rm.decodeTicks = 0;
     g_rm.haveCursorEnc = FALSE;
     g_rm.framePosted = FALSE;
-    g_rm.latMs = 0;
     {
         LARGE_INTEGER f;
         QueryPerformanceFrequency(&f);
