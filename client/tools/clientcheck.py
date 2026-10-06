@@ -19,6 +19,7 @@ import iivcheck as t  # noqa: E402
 
 ok = True
 u = ctypes.windll.user32
+u.SetProcessDpiAwarenessContext(ctypes.c_void_p(-4))   # 窓の大きさを物理の画素で聞く(DPI 非対応だと拡大率で割った値になる)
 
 
 def check(cond, label, detail=''):
@@ -144,10 +145,13 @@ def main():
     keys = re.findall(r'\[dryrun-key\] (down|up) scan=(\w+) vk=(\w+)', log)
     check(keys == [('down', '1E', '41'), ('up', '1E', '41'), ('down', '14B', '25'), ('up', '14B', '25')],
           'キー: スキャン コードと拡張の印', str(keys))
-    mv = re.search(r'\[dryrun\] mouse flags=C001 dx=(\d+) dy=(\d+)', log)
+    # ボタンを押す直前の移動で見る(本物のカーソルが新しく出た窓に重なっていると、その位置への移動が先に届く)
+    before = log.split('flags=0002')[0]
+    mvs = re.findall(r'\[dryrun\] mouse flags=C001 dx=(\d+) dy=(\d+)', before)
+    mv = mvs[-1] if mvs else None
     if mv:
-        x = int(mv[1]) * 1920 * 2 // 65536 // 2
-        y = int(mv[2]) * 1080 * 2 // 65536 // 2
+        x = int(mv[0]) * 1920 * 2 // 65536 // 2
+        y = int(mv[1]) * 1080 * 2 // 65536 // 2
         check(abs(x - 960) <= 4 and abs(y - 540) <= 4 and 'flags=0002' in log and 'flags=0004' in log,
               'マウス: 窓の真ん中 = 相手の真ん中、左ボタン', f'({x},{y})')
     else:
