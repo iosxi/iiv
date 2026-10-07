@@ -15,6 +15,7 @@
  *  出力は内部の窓(直前の 32KB + 今回の出力)に書いてから呼び手へ写す。
  * ================================================================== */
 
+#define ZLITE_INTERNAL
 #include "zlite.h"
 #include <stdlib.h>
 #include <string.h>
@@ -108,23 +109,23 @@ static void make_fixed(void)
     build(&g_fixLL, l, 288);
     for (i = 0; i < 30; i++) l[i] = 5;
     build(&g_fixD, l, 30);
-    _InterlockedExchange(&g_fixReady, 1);
+    ZL_PUBLISH(&g_fixReady);
 }
 
 /* ------------------------------------------------------------------ */
 /*  ビットの読み出し                                                    */
 /* ------------------------------------------------------------------ */
 
-static __forceinline size_t avail(const ZInflate *z) { return z->inLen * 8 - z->bp; }
+ZL_INLINE size_t avail(const ZInflate *z) { return z->inLen * 8 - z->bp; }
 
-static __forceinline unsigned long long peek(const ZInflate *z)
+ZL_INLINE unsigned long long peek(const ZInflate *z)
 {
     unsigned long long v;
     memcpy(&v, z->in + (z->bp >> 3), 8);
     return v >> (z->bp & 7);
 }
 
-static __forceinline unsigned bits(ZInflate *z, int n)
+ZL_INLINE unsigned bits(ZInflate *z, int n)
 {
     unsigned v;
     if (avail(z) < (size_t)n) { z->under = 1; return 0; }
@@ -134,7 +135,7 @@ static __forceinline unsigned bits(ZInflate *z, int n)
 }
 
 /* 記号を 1 個読む。読めなければ under を立てて 0、壊れていれば -1 */
-static __forceinline int decode(ZInflate *z, const Huff *h)
+ZL_INLINE int decode(ZInflate *z, const Huff *h)
 {
     unsigned long long b;
     unsigned e;
@@ -206,7 +207,7 @@ static int read_dynamic(ZInflate *z)
     return R_OK;
 }
 
-static __forceinline void copy_match(ZInflate *z, unsigned dist, unsigned len)
+ZL_INLINE void copy_match(ZInflate *z, unsigned dist, unsigned len)
 {
     zbyte *dst = z->win + z->winLen, *src = dst - dist;
     if (dist >= 8 && len <= dist) {
@@ -221,7 +222,7 @@ static __forceinline void copy_match(ZInflate *z, unsigned dist, unsigned len)
 /* 速い道の一致の写し。8 バイトずつ書くので、len の後ろへ最大 7 バイトはみ出す(呼び手が余白を保証する)。
    距離が 8 未満なら、最初の 8 バイトを 1 バイトずつ作り、その後は「距離の倍数で 8 以上」だけ前から写す
    (繰り返しの周期の倍数なので同じ絵柄になる。その倍数は 8 + 距離 未満なので、元の絵柄の中を指す)。 */
-static __forceinline void copy_fast(zbyte *dst, unsigned dist, unsigned len)
+ZL_INLINE void copy_fast(zbyte *dst, unsigned dist, unsigned len)
 {
     zbyte *end = dst + len;
     unsigned long long v;

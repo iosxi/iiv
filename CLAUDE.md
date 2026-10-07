@@ -47,6 +47,11 @@ build.bat 両方をビルドする(server\build.bat と client\build.bat を順�
 (`APP_NAME`、`log_printf`、`fx_host_send` など)は両方のヘッダーにそろえておく。
 **common/ を直したら両方をビルドし、両方の検証を通す。**
 
+`zlite.h` `zdeflate.c` `zinflate.c` は **input-mouser(`C:\projects\windows\input-mouser\src`)にも同じものを写している**
+(2026-10-07、input-mouser v13 のファイルの圧縮)。input-mouser は gcc(MinGW)でビルドするので、MSVC 専用の書き方は
+`zlite.h` の `ZL_*`(`ZLITE_INTERNAL` のときだけ定義)で両方に通す。直したら input-mouser へも写し、両方でビルドして確かめる。
+`filexfer.c` のまとめ読みと圧縮も、input-mouser の `filecopy.c` に同じ仕組みがある(送り方の関数と、1 束の上限 `PF_RAW_MAX` が違う)。
+
 ## 動作確認について
 
 - サーバー単体: `cd server && python tools/test.py`

@@ -2,6 +2,8 @@
  * zlite.h - RFB 用の zlib 互換 deflate / inflate
  *
  *  iiv-server と iiv-client で同じファイルを使う(中身をそろえる)。
+ *  input-mouser には iiv の common/ から zlite.h・zdeflate.c・zinflate.c を写した(2026-10-07、
+ *  ファイルの中身の圧縮に使う。filecopy.c)。直すときは iiv と両方を直す。MSVC と gcc(MinGW)の両方で通す。
  *
  *  RFB の zlib ストリーム(ZRLE、Tight の 4 本、拡張クリップボード)は
  *  接続中ずっと続き、矩形ごとに Z_SYNC_FLUSH で区切られる。
@@ -21,6 +23,20 @@
 #include <stddef.h>
 
 typedef unsigned char  zbyte;
+
+/* zdeflate.c・zinflate.c の中だけで使う(MSVC と gcc(MinGW。input-mouser)の両方で通すため) */
+#ifdef ZLITE_INTERNAL
+#if defined(_MSC_VER)
+#include <intrin.h>
+#define ZL_INLINE            static __forceinline
+#define ZL_PUBLISH(p)        _InterlockedExchange((p), 1)            /* 表を作り終えた印 */
+static __forceinline unsigned ZL_CTZ64(unsigned long long x) { unsigned long i; _BitScanForward64(&i, x); return (unsigned)i; }
+#else
+#define ZL_INLINE            static inline __attribute__((always_inline))
+#define ZL_PUBLISH(p)        __atomic_store_n((p), 1, __ATOMIC_RELEASE)
+#define ZL_CTZ64(x)          ((unsigned)__builtin_ctzll(x))
+#endif
+#endif
 
 #define ZD_WINDOW 32768
 

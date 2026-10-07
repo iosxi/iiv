@@ -14,10 +14,10 @@
  *  (zlib は符号長の符号が不完全だとエラーにする)。
  * ================================================================== */
 
+#define ZLITE_INTERNAL
 #include "zlite.h"
 #include <stdlib.h>
 #include <string.h>
-#include <intrin.h>
 
 #define HBITS       15
 #define HSIZE       (1 << HBITS)
@@ -94,10 +94,10 @@ static void make_tables(void)
     for (i = 1; i < 16; i++) { code = (code + bl[i - 1]) << 1; next[i] = (int)code; }
     for (i = 0; i < 288; i++) g_fixCode[i] = (unsigned short)rev_bits((unsigned)next[g_fixLen[i]]++, g_fixLen[i]);
     for (i = 0; i < 32; i++) { g_fixDLen[i] = 5; g_fixDCode[i] = (unsigned short)rev_bits((unsigned)i, 5); }
-    _InterlockedExchange(&g_tablesReady, 1);
+    ZL_PUBLISH(&g_tablesReady);
 }
 
-static __forceinline int dist_code(unsigned d)
+ZL_INLINE int dist_code(unsigned d)
 {
     d--;
     return d < 256 ? g_distLo[d] : g_distHi[d >> 7];
@@ -123,7 +123,7 @@ typedef struct {
     int                bc;
 } BW;
 
-static __forceinline void put(BW *w, unsigned v, int n)
+ZL_INLINE void put(BW *w, unsigned v, int n)
 {
     w->bb |= (unsigned long long)v << w->bc;
     w->bc += n;
@@ -342,10 +342,10 @@ static void flush_block(BW *w, ZDWork *z, int nsym, const zbyte *raw, size_t raw
 /*  LZ77                                                                */
 /* ------------------------------------------------------------------ */
 
-static __forceinline unsigned rd32(const zbyte *p) { unsigned v; memcpy(&v, p, 4); return v; }
-static __forceinline unsigned hash4(unsigned v) { return (v * 2654435761u) >> (32 - HBITS); }
+ZL_INLINE unsigned rd32(const zbyte *p) { unsigned v; memcpy(&v, p, 4); return v; }
+ZL_INLINE unsigned hash4(unsigned v) { return (v * 2654435761u) >> (32 - HBITS); }
 
-static __forceinline unsigned match_len(const zbyte *a, const zbyte *b, unsigned max)
+ZL_INLINE unsigned match_len(const zbyte *a, const zbyte *b, unsigned max)
 {
     unsigned n = 0;
     while (n + 8 <= max) {
@@ -353,9 +353,7 @@ static __forceinline unsigned match_len(const zbyte *a, const zbyte *b, unsigned
         memcpy(&x, a + n, 8);
         memcpy(&y, b + n, 8);
         if (x != y) {
-            unsigned long idx;
-            _BitScanForward64(&idx, x ^ y);
-            return n + (idx >> 3);
+            return n + (ZL_CTZ64(x ^ y) >> 3);
         }
         n += 8;
     }
@@ -370,7 +368,7 @@ static const Level k_levels[10] = {
     { 8, 64, 1 }, { 16, 128, 1 }, { 32, 128, 1 }, { 64, 258, 1 }, { 256, 258, 1 } };
 
 /* 一致を探して長さを返す(MIN_MATCH 未満なら 0)。p はハッシュ表へ登録する */
-static __forceinline unsigned find_match(ZDWork *z, const zbyte *buf, unsigned p, unsigned end,
+ZL_INLINE unsigned find_match(ZDWork *z, const zbyte *buf, unsigned p, unsigned end,
                                          int chain, unsigned nice, unsigned *dist)
 {
     unsigned cur = rd32(buf + p), h = hash4(cur), cand = z->head[h], best = 0;
@@ -390,7 +388,7 @@ static __forceinline unsigned find_match(ZDWork *z, const zbyte *buf, unsigned p
     return best >= MIN_MATCH ? best : 0;
 }
 
-static __forceinline void insert(ZDWork *z, const zbyte *buf, unsigned p)
+ZL_INLINE void insert(ZDWork *z, const zbyte *buf, unsigned p)
 {
     unsigned h = hash4(rd32(buf + p));
     z->prev[p & WMASK] = z->head[h];
