@@ -1,0 +1,6 @@
+build/
+*.obj
+src/*.aps
+__pycache__/
+iiv-client.ini
+iiv-client.log
