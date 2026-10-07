@@ -8,6 +8,9 @@
  *  conn_frame_shown で「表示した」と返す。サーバーは返事の無いフレームが 2 つを超えると
  *  待つので、こちらが遅ければ、サーバー側で変化がまとまる(遅れが溜まらない)。
  *
+ *  音(「音を鳴らす」)は、つないだ後に IIV_C_AUDIO で求める。届いた音は audio.c の待ち行列へ
+ *  写すだけで、復号と再生は audio.c のスレッドがする(このスレッドの映像の復号を待たせない)。
+ *
  *  カーソルはサーバーから形と位置を受け取り、こちらで描く(動かしても往復を待たない)。
  *  送信(キー・マウス・クリップボード・返事)は画面のスレッドからも呼ばれるので
  *  g_sendCs で 1 つずつにする。
@@ -211,6 +214,24 @@ void conn_set_quality(int q)
     g_p.quality = q;
     st.kbps = k_kbps[q];
     send_msg(IIV_C_SETTINGS, &st, sizeof(st), NULL, 0);
+}
+
+int audio_codec_from_cfg(void)
+{
+    if (!g_cfg.audio) return IIV_AUDIO_OFF;
+    return g_cfg.audioSpeed ? IIV_AUDIO_AAC : IIV_AUDIO_PCM;
+}
+
+void conn_set_audio(int codec)
+{
+    IivAudioRequest ar;
+    g_p.audio = codec;
+    ar.codec = (unsigned char)codec;
+    if (!codec) {
+        audio_stop();
+        audio_reset_status();
+    }
+    send_msg(IIV_C_AUDIO, &ar, sizeof(ar), NULL, 0);
 }
 
 void conn_frame_shown(UINT32 frame, LONG64 recvQpc)
@@ -509,6 +530,16 @@ static BOOL message_loop(void)
         case IIV_S_PING:
             if (n >= sizeof(IivPing)) send_msg(IIV_C_PONG, p, sizeof(IivPing), NULL, 0);
             break;
+        case IIV_S_AUDIO_CONFIG:
+            if (n >= sizeof(IivAudioConfig) && g_p.audio) {
+                IivAudioConfig ac;
+                memcpy(&ac, p, sizeof(ac));
+                if (ac.codec == g_p.audio) audio_on_config(&ac);
+            }
+            break;
+        case IIV_S_AUDIO:
+            if (g_p.audio) audio_on_packet(p, n);
+            break;
         default:
             break;                          /* 知らないものは読み飛ばす(新しい版の相手のため) */
         }
@@ -614,6 +645,7 @@ static DWORD WINAPI conn_thread(void *arg)
             InterlockedExchange(&g_active, 1);
             log_printf(L"%s:%d に接続した(「%s」%s)", g_p.host, g_p.port, g_rm.name, g_p.viewOnly ? L"、見るだけ" : L"");
             if (g_p.quality != Q_AUTO) conn_set_quality(g_p.quality);
+            if (g_p.audio) conn_set_audio(g_p.audio);
             PostMessageW(g_notify, WM_APP_CONNECTED, 0, 0);
             if (g_fxOffer && fx_usable()) PostMessageW(g_notify, WM_APP_FXOFFER, 0, 0);
             message_loop();
@@ -624,6 +656,7 @@ static DWORD WINAPI conn_thread(void *arg)
     }
     vdec_close();
     g_vdecOk = FALSE;
+    audio_stop();
     if (g_err[0] && !g_stop) {
         size_t n = wcslen(g_err) + 1;
         reason = (WCHAR *)malloc(n * sizeof(WCHAR));
@@ -663,6 +696,7 @@ void conn_start(const ConnParams *p, HWND notify)
     g_rm.decodeTicks = 0;
     g_rm.haveCursorEnc = FALSE;
     g_rm.framePosted = FALSE;
+    audio_reset_status();
     {
         LARGE_INTEGER f;
         QueryPerformanceFrequency(&f);

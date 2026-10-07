@@ -121,6 +121,7 @@ void config_load(void)
         else if (!_stricmp(key, "notify")) g_cfg.notify = atoi(val) != 0;
         else if (!_stricmp(key, "showcursor")) g_cfg.showCursor = atoi(val) != 0;
         else if (!_stricmp(key, "nosleep")) g_cfg.noSleep = atoi(val) != 0;
+        else if (!_stricmp(key, "audio")) g_cfg.audio = atoi(val) != 0;
         else if (!_stricmp(key, "fxoffer")) g_cfg.fxOffer = atoi(val) != 0;
         else if (!_stricmp(key, "maxfps")) g_cfg.maxFps = atoi(val);
         else if (!_stricmp(key, "theme")) g_cfg.theme = !_stricmp(val, "light") ? 1 : !_stricmp(val, "dark") ? 2 : 0;
@@ -175,6 +176,8 @@ BOOL config_save(void)
         "showcursor=%d\n"
         "; 1 = 接続されている間はスリープさせず、画面も消さない\n"
         "nosleep=%d\n"
+        "; 1 = 音を鳴らす(相手も「音を鳴らす」にしていれば、この PC で鳴っている音を相手で鳴らす)\n"
+        "audio=%d\n"
         "; 映像のビットレート(kbps)の上限。0 = 決めない(画質で決める。おすすめ)\n"
         "kbps=%d\n"
         "; 動いている間の画質(1〜100)と、止まったら送り直す画質。止まってから送り直すまで(ms)\n"
@@ -191,7 +194,7 @@ BOOL config_save(void)
         "\n[service]\n"
         "; サービスとして登録する前の SoftwareSASGeneration(解除のときに戻す。-1 = 無かった、-2 = 控えていない)\n"
         "sas_before=%d\n",
-        g_cfg.port, listen ? listen : "", pw, vpw, g_cfg.viewOnly, g_cfg.display, g_cfg.notify, g_cfg.showCursor, g_cfg.noSleep, g_cfg.kbps, g_cfg.qMove, g_cfg.qStill, g_cfg.stillMs, g_cfg.maxFps,
+        g_cfg.port, listen ? listen : "", pw, vpw, g_cfg.viewOnly, g_cfg.display, g_cfg.notify, g_cfg.showCursor, g_cfg.noSleep, g_cfg.audio, g_cfg.kbps, g_cfg.qMove, g_cfg.qStill, g_cfg.stillMs, g_cfg.maxFps,
         g_cfg.theme == 1 ? "light" : g_cfg.theme == 2 ? "dark" : "system", g_cfg.log, g_cfg.sasBefore);
     free(listen);
     if (n < 0) return FALSE;

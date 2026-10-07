@@ -50,7 +50,8 @@ enum { IDB_RESTORE = 0x180, IDB_MENU, IDB_MIN, IDB_CLOSE, IDB_STATS };
 
 enum {
     IDM_FULLSCREEN = 0x100, IDM_FIT, IDM_ACTUAL, IDM_Q_HIGH, IDM_Q_LOSSLESS, IDM_Q_NORMAL, IDM_Q_LOW,
-    IDM_VIEWONLY, IDM_CAD, IDM_SENDF8, IDM_REFRESH, IDM_STATS, IDM_DISCONNECT, IDM_GRAB, IDM_RENDER_GDI, IDM_RENDER_GPU
+    IDM_VIEWONLY, IDM_CAD, IDM_SENDF8, IDM_REFRESH, IDM_STATS, IDM_DISCONNECT, IDM_GRAB, IDM_RENDER_GDI, IDM_RENDER_GPU,
+    IDM_AUDIO, IDM_AUDIO_QUALITY, IDM_AUDIO_SPEED
 };
 
 HWND g_view;
@@ -827,8 +828,23 @@ void view_release_keys(void)
     }
 }
 
+/* 「音を鳴らす」の項目の文字(サーバー側で鳴らせないときは、そう書く) */
+static const WCHAR *audio_menu_text(void)
+{
+    if (g_cfg.audio && g_connected) {
+        switch (audio_server_status()) {
+        case IIV_AS_DISABLED: return L"音を鳴らす(&U)  ― サーバーの「音を鳴らす」が切られています";
+        case IIV_AS_NODEVICE: return L"音を鳴らす(&U)  ― サーバーで音を取り込めません";
+        case -1:              return L"音を鳴らす(&U)  ― サーバーから返事がありません(古い版か、まだ)";
+        }
+    }
+    return L"音を鳴らす(&U)";
+}
+
 static void update_checks(HMENU m)
 {
+    ModifyMenuW(m, IDM_AUDIO, MF_BYCOMMAND | MF_STRING | (g_cfg.audio ? MF_CHECKED : MF_UNCHECKED), IDM_AUDIO, audio_menu_text());
+    CheckMenuRadioItem(m, IDM_AUDIO_QUALITY, IDM_AUDIO_SPEED, g_cfg.audioSpeed ? IDM_AUDIO_SPEED : IDM_AUDIO_QUALITY, MF_BYCOMMAND);
     CheckMenuItem(m, IDM_FULLSCREEN, MF_BYCOMMAND | (g_full ? MF_CHECKED : MF_UNCHECKED));
     CheckMenuItem(m, IDM_FIT, MF_BYCOMMAND | (g_cfg.fit ? MF_CHECKED : MF_UNCHECKED));
     CheckMenuItem(m, IDM_ACTUAL, MF_BYCOMMAND | (!g_cfg.fit ? MF_CHECKED : MF_UNCHECKED));
@@ -1100,6 +1116,11 @@ static void finish_test(void)
                L"受信と復号 平均 %.2fms、描画 %d 回",
                sec, g_rm.updates, g_rm.updates / (sec > 0 ? sec : 1), g_rm.bytes, g_rm.bytes * 8 / (sec > 0 ? sec : 1) / 1e6,
                g_rm.updates ? g_rm.decodeTicks * 1000.0 / (double)f.QuadPart / g_rm.updates : 0.0, g_presented);
+    if (audio_playing()) {
+        WCHAR s[256];
+        audio_stats(s, ARRAYSIZE(s));
+        log_printf(L"検証の終わり: %s", s);
+    }
     PostMessageW(g_view, WM_CLOSE, 0, 0);
 }
 
@@ -1109,7 +1130,7 @@ static void finish_test(void)
 
 static void build_menu(HMENU m)
 {
-    HMENU q = CreatePopupMenu(), r = CreatePopupMenu();
+    HMENU q = CreatePopupMenu(), r = CreatePopupMenu(), a = CreatePopupMenu();
     AppendMenuW(q, MF_STRING | (g_cfg.quality == Q_AUTO ? MF_CHECKED : 0), IDM_Q_HIGH, L"自動(おすすめ)");
     AppendMenuW(q, MF_STRING | (g_cfg.quality == Q_LAN ? MF_CHECKED : 0), IDM_Q_LOSSLESS, L"高め(LAN 向け)");
     AppendMenuW(q, MF_STRING | (g_cfg.quality == Q_WIFI ? MF_CHECKED : 0), IDM_Q_NORMAL, L"控えめ(Wi-Fi・遠隔地)");
@@ -1122,6 +1143,11 @@ static void build_menu(HMENU m)
     AppendMenuW(r, MF_STRING, IDM_RENDER_GPU, L"GPU(縮めても文字がきれい)");
     CheckMenuRadioItem(r, IDM_RENDER_GDI, IDM_RENDER_GPU, g_cfg.renderGdi ? IDM_RENDER_GDI : IDM_RENDER_GPU, MF_BYCOMMAND);
     AppendMenuW(m, MF_POPUP, (UINT_PTR)r, L"描画(&G)");
+    AppendMenuW(m, MF_STRING | (g_cfg.audio ? MF_CHECKED : 0), IDM_AUDIO, audio_menu_text());
+    AppendMenuW(a, MF_STRING, IDM_AUDIO_QUALITY, L"音質優先(そのまま送る。1.5Mbps)");
+    AppendMenuW(a, MF_STRING, IDM_AUDIO_SPEED, L"速度優先(音質を落として 0.1Mbps。音が少し遅れる)");
+    CheckMenuRadioItem(a, IDM_AUDIO_QUALITY, IDM_AUDIO_SPEED, g_cfg.audioSpeed ? IDM_AUDIO_SPEED : IDM_AUDIO_QUALITY, MF_BYCOMMAND);
+    AppendMenuW(m, MF_POPUP, (UINT_PTR)a, L"音質(&O)");
     AppendMenuW(m, MF_SEPARATOR, 0, NULL);
     AppendMenuW(m, MF_STRING | (g_params.viewOnly ? MF_GRAYED : 0), IDM_CAD, L"Ctrl+Alt+Del を送る(&C)");
     AppendMenuW(m, MF_STRING | (g_params.viewOnly ? MF_GRAYED : 0), IDM_SENDF8, L"F8 を送る(&8)");
@@ -1201,6 +1227,16 @@ static void command(int id)
         break;
     case IDM_DISCONNECT: PostMessageW(g_view, WM_CLOSE, 0, 0); break;
     case IDM_RENDER_GDI: case IDM_RENDER_GPU: set_render(id == IDM_RENDER_GDI); break;
+    case IDM_AUDIO:
+        g_cfg.audio = !g_cfg.audio;
+        config_save();
+        conn_set_audio(audio_codec_from_cfg());
+        break;
+    case IDM_AUDIO_QUALITY: case IDM_AUDIO_SPEED:
+        g_cfg.audioSpeed = id == IDM_AUDIO_SPEED;
+        config_save();
+        if (g_cfg.audio) conn_set_audio(audio_codec_from_cfg());
+        break;
     }
 }
 
@@ -1568,7 +1604,7 @@ static LRESULT CALLBACK view_proc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp)
         return 0;
 
     case WM_SYSCOMMAND:
-        if ((wp & 0xFFF0) < 0xF000 && wp >= IDM_FULLSCREEN && wp <= IDM_RENDER_GPU) { command((int)wp); return 0; }
+        if ((wp & 0xFFF0) < 0xF000 && wp >= IDM_FULLSCREEN && wp <= IDM_AUDIO_SPEED) { command((int)wp); return 0; }
         if ((wp & 0xFFF0) == SC_KEYMENU) return 0;      /* Alt で窓のメニューへ行かない */
         break;
 

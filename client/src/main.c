@@ -8,6 +8,7 @@
  *  -fullscreen      全画面で開く        -quality auto|lan|wifi|slow
  *  -ini <path>      別の設定ファイル    -log         ログを書く
  *  -render gdi|gpu  描画の方式(-gdi・-gpu とも書ける)
+ *  -audio quality|speed|off  音を鳴らす(音質優先 / 速度優先)、鳴らさない
  *  -remove-firewall 管理者で: ファイアウォールの、この exe の規則を消す(接続の画面のボタンから呼ぶ。
  *                   終了コードは消した数、-1 = 失敗)
  *
@@ -17,6 +18,8 @@
  *  -idleexit ms     更新が ms 止まったら終わる
  *  -fxoffer         つながったら、今クリップボードにあるファイルを渡す
  *  -fxnowatch       コピーしたファイルを渡さない(1 台で試すとき、両側が貼り合わないように)
+ *  -audiodump <file.wav>  受け取った音(復号した後)を WAV に書く
+ *  -audiomute       音量 0 で鳴らす(鳴らす処理は同じ。1 台で試すときに音を出さない)
  * ================================================================== */
 
 #include "iivc.h"
@@ -31,6 +34,8 @@ int        g_idleExitMs;
 BOOL       g_hookTest;
 BOOL       g_fxOffer;
 BOOL       g_fxNoWatch;
+WCHAR      g_audioDump[MAX_PATH];
+BOOL       g_audioMute;
 
 static BOOL g_everConnected;
 
@@ -44,6 +49,7 @@ static BOOL make_params(void)
     lstrcpynA(g_params.password, g_cfg.password, sizeof(g_params.password));
     g_params.quality = g_cfg.quality;
     g_params.viewOnly = g_cfg.viewOnly;
+    g_params.audio = audio_codec_from_cfg();
     return TRUE;
 }
 
@@ -103,6 +109,7 @@ int WINAPI wWinMain(HINSTANCE inst, HINSTANCE prev, LPWSTR cmdline, int show)
     char    pwArg[PW_MAX] = { 0 };
     BOOL    havePw = FALSE, logArg = FALSE, viewArg = FALSE, fullArg = FALSE, fwRemove = FALSE;
     int     qualityArg = -1, renderArg = -1;  /* renderArg: 1 = GDI、0 = GPU */
+    int     audioArg = -1;                    /* 0 = 鳴らさない、1 = 音質優先、2 = 速度優先 */
     INITCOMMONCONTROLSEX icc;
 
     (void)prev; (void)cmdline; (void)show;
@@ -136,6 +143,12 @@ int WINAPI wWinMain(HINSTANCE inst, HINSTANCE prev, LPWSTR cmdline, int show)
             else if (!lstrcmpiW(a, L"gdi")) renderArg = 1;
             else if (!lstrcmpiW(a, L"gpu")) renderArg = 0;
             else if (!lstrcmpiW(a, L"render") && i + 1 < argc) renderArg = lstrcmpiW(argv[++i], L"gpu") != 0;
+            else if (!lstrcmpiW(a, L"audio") && i + 1 < argc) {
+                const WCHAR *q = argv[++i];
+                audioArg = !lstrcmpiW(q, L"off") ? 0 : !lstrcmpiW(q, L"speed") ? 2 : 1;
+            }
+            else if (!lstrcmpiW(a, L"audiodump") && i + 1 < argc) GetFullPathNameW(argv[++i], MAX_PATH, g_audioDump, NULL);
+            else if (!lstrcmpiW(a, L"audiomute")) g_audioMute = TRUE;
         } else {
             lstrcpynW(hostArg, a, ARRAYSIZE(hostArg));
         }
@@ -155,6 +168,10 @@ int WINAPI wWinMain(HINSTANCE inst, HINSTANCE prev, LPWSTR cmdline, int show)
 
     if (qualityArg >= 0) g_cfg.quality = qualityArg;
     if (renderArg >= 0) g_cfg.renderGdi = renderArg;
+    if (audioArg >= 0) {
+        g_cfg.audio = audioArg != 0;
+        if (audioArg) g_cfg.audioSpeed = audioArg == 2;
+    }
     if (viewArg) g_cfg.viewOnly = TRUE;
     if (fullArg) g_cfg.fullscreen = TRUE;
 

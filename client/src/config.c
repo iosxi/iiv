@@ -119,6 +119,8 @@ void config_load(void)
         else if (!_stricmp(key, "stats")) g_cfg.showStats = atoi(val) != 0;
         else if (!_stricmp(key, "nosleep")) g_cfg.noSleep = atoi(val) != 0;
         else if (!_stricmp(key, "render")) g_cfg.renderGdi = _stricmp(val, "gpu") != 0;
+        else if (!_stricmp(key, "audio")) g_cfg.audio = atoi(val) != 0;
+        else if (!_stricmp(key, "audioquality")) g_cfg.audioSpeed = !_stricmp(val, "speed");
         else if (!_stricmp(key, "theme")) g_cfg.theme = !_stricmp(val, "light") ? 1 : !_stricmp(val, "dark") ? 2 : 0;
         else if (!_stricmp(key, "log")) g_cfg.log = atoi(val) != 0;
         else if (!_stricmp(key, "host") && g_cfg.nhistory < MAX_HISTORY && *val)
@@ -162,9 +164,13 @@ BOOL config_save(void)
         "render=%s\n"
         "; 1 = つないでいる間はスリープさせず、画面も消さない\n"
         "nosleep=%d\n"
+        "; 1 = 音を鳴らす(サーバーも「音を鳴らす」にしていれば、サーバーで鳴っている音をこちらで鳴らす)\n"
+        "audio=%d\n"
+        "; 音質: quality(音質優先。そのまま送る。1.5Mbps)/ speed(速度優先。AAC で 0.1Mbps。音質が少し落ち、70〜90ms 遅れる)\n"
+        "audioquality=%s\n"
         "\n[history]\n",
         k_quality[g_cfg.quality], g_cfg.viewOnly, g_cfg.fullscreen, g_cfg.fit, k_grab[g_cfg.grab], g_cfg.showStats,
-        g_cfg.renderGdi ? "gdi" : "gpu", g_cfg.noSleep);
+        g_cfg.renderGdi ? "gdi" : "gpu", g_cfg.noSleep, g_cfg.audio, g_cfg.audioSpeed ? "speed" : "quality");
     for (i = 0; i < g_cfg.nhistory; i++) {
         char *h = utf16_to_utf8(g_cfg.history[i], NULL);
         if (h) { p += sprintf(p, "host=%s\n", h); free(h); }

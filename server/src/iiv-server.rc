@@ -13,7 +13,7 @@ IDI_ACTIVE ICON "iiv-server-active.ico"
 // ------------------------------------------------------------------
 //  設定画面
 // ------------------------------------------------------------------
-IDD_SETTINGS DIALOGEX 0, 0, 320, 408
+IDD_SETTINGS DIALOGEX 0, 0, 320, 422
 STYLE DS_SHELLFONT | DS_CENTER | WS_POPUP | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX
 EXSTYLE WS_EX_APPWINDOW
 CAPTION "iiv-server"
@@ -42,26 +42,27 @@ BEGIN
     AUTOCHECKBOX    "接続・切断を通知で知らせる(&N)", IDC_NOTIFY, 12, 244, 296, 10
     AUTOCHECKBOX    "マウスが無い PC でもカーソルを見せる(Windows が隠していても)(&M)", IDC_SHOWCURSOR, 12, 258, 296, 10
     AUTOCHECKBOX    "接続されている間はスリープさせず、画面も消さない(&S)", IDC_NOSLEEP, 12, 272, 296, 10
+    AUTOCHECKBOX    "音を鳴らす(相手も「音を鳴らす」にしていれば、この PC の音を相手で鳴らす)(&U)", IDC_AUDIO, 12, 286, 296, 10
 
-    LTEXT           "Windows の起動時から", IDC_H_SERVICE, 12, 290, 200, 11
-    LTEXT           "", IDC_SVCTEXT, 12, 304, 214, 18, SS_NOPREFIX
-    PUSHBUTTON      "", IDC_SERVICE, 232, 304, 76, 15
+    LTEXT           "Windows の起動時から", IDC_H_SERVICE, 12, 304, 200, 11
+    LTEXT           "", IDC_SVCTEXT, 12, 318, 214, 18, SS_NOPREFIX
+    PUSHBUTTON      "", IDC_SERVICE, 232, 318, 76, 15
 
-    LTEXT           "ネットワークの許可", IDC_H_FW, 12, 328, 200, 11
-    LTEXT           "", IDC_FWTEXT, 12, 342, 214, 20, SS_NOPREFIX
-    PUSHBUTTON      "許可を消す(&F)...", IDC_FWREMOVE, 232, 342, 76, 15
-    LTEXT           "", IDC_INIPATH, 12, 368, 296, 9, SS_PATHELLIPSIS | SS_NOPREFIX
+    LTEXT           "ネットワークの許可", IDC_H_FW, 12, 342, 200, 11
+    LTEXT           "", IDC_FWTEXT, 12, 356, 214, 20, SS_NOPREFIX
+    PUSHBUTTON      "許可を消す(&F)...", IDC_FWREMOVE, 232, 356, 76, 15
+    LTEXT           "", IDC_INIPATH, 12, 382, 296, 9, SS_PATHELLIPSIS | SS_NOPREFIX
 
-    DEFPUSHBUTTON   "OK", IDOK, 196, 388, 54, 14
-    PUSHBUTTON      "キャンセル", IDCANCEL, 254, 388, 54, 14
+    DEFPUSHBUTTON   "OK", IDOK, 196, 402, 54, 14
+    PUSHBUTTON      "キャンセル", IDCANCEL, 254, 402, 54, 14
 END
 
 // ------------------------------------------------------------------
 //  版
 // ------------------------------------------------------------------
 VS_VERSION_INFO VERSIONINFO
-FILEVERSION     1, 2, 0, 0
-PRODUCTVERSION  1, 2, 0, 0
+FILEVERSION     1, 3, 0, 0
+PRODUCTVERSION  1, 3, 0, 0
 FILEOS          VOS_NT_WINDOWS32
 FILETYPE        VFT_APP
 BEGIN
@@ -71,11 +72,11 @@ BEGIN
         BEGIN
             VALUE "CompanyName",      "iosxi"
             VALUE "FileDescription",  "iiv-server (リモート デスクトップ)"
-            VALUE "FileVersion",      "1.2.0"
+            VALUE "FileVersion",      "1.3.0"
             VALUE "InternalName",     "iiv-server"
             VALUE "OriginalFilename", "iiv-server.exe"
             VALUE "ProductName",      "iiv"
-            VALUE "ProductVersion",   "1.2.0"
+            VALUE "ProductVersion",   "1.3.0"
         END
     END
     BLOCK "VarFileInfo"

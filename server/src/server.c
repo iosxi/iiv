@@ -13,6 +13,10 @@
  *  送る速さの判断から外す(ほかの相手を止めないため)。待ち行列があふれたら
  *  その相手だけ捨てて、次のキーフレームからやり直す。
  *
+ *  音(「音を鳴らす」)は、相手が IIV_C_AUDIO で求めたときだけ audio.c が取り込み、
+ *  server_audio_deliver() で相手ごとの待ち行列(aq)へ入れる。書き手は音を映像より先に送る
+ *  (小さく、遅れると途切れて聞こえるため)。待ち行列があふれたら古い音から捨てる。
+ *
  *  認証はパスワード(auth.c)。パスワードが無いときは 127.0.0.1 でしか待ち受けない
  *  (main.c が止める)。同じ IP から 60 秒に 5 回失敗したら、その IP を 60 秒締め出す。
  * ================================================================== */
@@ -307,6 +311,28 @@ void server_cursor_changed(void)
     ReleaseSRWLockShared(&g_scr.lock);
 }
 
+void server_audio_deliver(AFrame *f)
+{
+    Client *c;
+    AcquireSRWLockShared(&g_scr.lock);
+    for (c = g_scr.clients; c; c = c->next) {
+        if (!c->active || c->quit || c->audioWanted != f->codec) continue;
+        EnterCriticalSection(&c->cs);
+        if (c->aqCount >= AQ_MAX) {             /* 受け取れていない: 古い音から捨てる */
+            aframe_release(c->aq[c->aqHead]);
+            c->aqHead = (c->aqHead + 1) % AQ_MAX;
+            c->aqCount--;
+            c->audioDropped++;
+        }
+        InterlockedIncrement(&f->ref);
+        c->aq[(c->aqHead + c->aqCount) % AQ_MAX] = f;
+        c->aqCount++;
+        LeaveCriticalSection(&c->cs);
+        SetEvent(c->hWake);
+    }
+    ReleaseSRWLockShared(&g_scr.lock);
+}
+
 /* ------------------------------------------------------------------ */
 /*  相手からのメッセージ                                                */
 /* ------------------------------------------------------------------ */
@@ -427,6 +453,20 @@ static BOOL message_loop(Client *c)
                 LeaveCriticalSection(&c->cs);
                 log_printf(L"%s: ビットレート %u kbps を求められた", c->addr, st.kbps);
                 video_kick();
+            }
+            break;
+        case IIV_C_AUDIO:
+            if (n >= sizeof(IivAudioRequest)) {
+                IivAudioRequest ar;
+                int codec;
+                memcpy(&ar, p, sizeof(ar));
+                codec = ar.codec == IIV_AUDIO_PCM || ar.codec == IIV_AUDIO_AAC ? ar.codec : IIV_AUDIO_OFF;
+                c->audioWanted = codec;
+                log_printf(L"%s: 音を求められた(%s)%s", c->addr,
+                           codec == IIV_AUDIO_PCM ? L"音質優先" : codec == IIV_AUDIO_AAC ? L"速度優先" : L"要らない",
+                           codec && !g_cfg.audio ? L"。こちらの「音を鳴らす」が切られている" : L"");
+                audio_update();
+                SetEvent(c->hWake);
             }
             break;
         default:
@@ -559,6 +599,44 @@ static void send_cursor(Client *c)
     if (move) send_msg(c, IIV_S_CURSOR_POS, &pos, sizeof(pos), NULL, 0);
 }
 
+/* 音: 形が変わっていれば知らせ、待っている音を送る */
+static void send_audio(Client *c)
+{
+    int want = c->audioWanted;
+    if (want) {
+        IivAudioConfig ac;
+        LONG ver;
+        if (audio_config_for(want, &ac, &ver) && ver != c->audioCfgSent) {
+            c->audioCfgSent = ver;
+            send_msg(c, IIV_S_AUDIO_CONFIG, &ac, sizeof(ac), NULL, 0);
+            log_printf(L"%s: 音の形を知らせた(%s、%u Hz、状態 %u)", c->addr, want == IIV_AUDIO_PCM ? L"PCM" : L"AAC", ac.rate, ac.status);
+        }
+    } else {
+        c->audioCfgSent = 0;
+        if (!c->aqCount) return;                /* 音を使っていない(ふだん): 何もしない */
+    }
+    for (;;) {
+        AFrame *f = NULL;
+        EnterCriticalSection(&c->cs);
+        if (c->aqCount) {
+            f = c->aq[c->aqHead];
+            c->aqHead = (c->aqHead + 1) % AQ_MAX;
+            c->aqCount--;
+        }
+        LeaveCriticalSection(&c->cs);
+        if (!f) break;
+        if (f->codec == want && c->audioCfgSent && !c->quit) {
+            IivAudioHead ah;
+            ah.seq = f->seq;
+            ah.frames = f->frames;
+            ah.captureQpc = f->qpc;
+            send_msg(c, IIV_S_AUDIO, &ah, sizeof(ah), f->data, f->len);
+            c->audioFrames++;
+        }
+        aframe_release(f);
+    }
+}
+
 static DWORD WINAPI writer_thread(void *arg)
 {
     Client *c = (Client *)arg;
@@ -572,6 +650,7 @@ static DWORD WINAPI writer_thread(void *arg)
         WaitForSingleObject(c->hWake, 500);
         if (c->quit) break;
         send_fx_and_clip(c);
+        send_audio(c);
         AcquireSRWLockShared(&g_scr.lock);
         cfgVer = g_scr.cfgVer;
         ReleaseSRWLockShared(&g_scr.lock);
@@ -595,6 +674,7 @@ static DWORD WINAPI writer_thread(void *arg)
             }
             LeaveCriticalSection(&c->cs);
             if (!f) break;
+            if (c->aqCount) send_audio(c);      /* 大きなフレームの前に、溜まった音を */
             if (f->cfgVer != c->cfgSent) send_config(c);
             vh.frame = f->no;
             vh.flags = f->key ? IIV_VF_KEY : 0;
@@ -643,7 +723,8 @@ static DWORD WINAPI client_thread(void *arg)
         if (c->thrWrite) { WaitForSingleObject(c->thrWrite, INFINITE); CloseHandle(c->thrWrite); }
         input_release_all(c);
         InterlockedDecrement(&g_clientCount);
-        log_printf(L"%s: 切れた(送ったバイト %I64d、フレーム %ld)", c->addr, c->bytesSent, c->frames);
+        log_printf(L"%s: 切れた(送ったバイト %I64d、フレーム %ld、音 %ld(捨てた %ld))", c->addr, c->bytesSent, c->frames,
+                   c->audioFrames, c->audioDropped);
         if (g_cfg.notify && !g_stopping) app_notify(L"%s との接続が切れました", c->addr);
     }
 
@@ -657,6 +738,7 @@ static DWORD WINAPI client_thread(void *arg)
     ReleaseSRWLockExclusive(&g_scr.lock);
     PostMessageW(g_mainWnd, WM_APP_CLIENTS, 0, 0);
     video_kick();
+    if (c->audioWanted) audio_update();
 
     closesocket(c->s);
     CloseHandle(c->hWake);
@@ -664,6 +746,11 @@ static DWORD WINAPI client_thread(void *arg)
         vframe_release(c->vq[c->vqHead]);
         c->vqHead = (c->vqHead + 1) % VQ_MAX;
         c->vqCount--;
+    }
+    while (c->aqCount) {
+        aframe_release(c->aq[c->aqHead]);
+        c->aqHead = (c->aqHead + 1) % AQ_MAX;
+        c->aqCount--;
     }
     DeleteCriticalSection(&c->sendLock);
     DeleteCriticalSection(&c->cs);

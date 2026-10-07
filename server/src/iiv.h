@@ -40,9 +40,9 @@
 #include "iivproto.h"
 
 #define APP_NAME     L"iiv-server"
-#define APP_VERSION  L"1.2.0"
-#define APP_VERSION_A "1.2.0"
-#define APP_RELEASE  L"v5"               /* リリースのタグ(タイトルに出す。リリースのたびに上げる) */
+#define APP_VERSION  L"1.3.0"
+#define APP_VERSION_A "1.3.0"
+#define APP_RELEASE  L"v6"               /* リリースのタグ(タイトルに出す。リリースのたびに上げる) */
 #define APP_TITLE    APP_NAME L" " APP_RELEASE
 
 #define WM_APP_TRAY     (WM_APP + 1)
@@ -82,6 +82,7 @@ typedef struct Config {
     int   notify;               /* 1 = 接続・切断を通知で知らせる */
     int   showCursor;           /* 1 = Windows がカーソルを隠していても(マウスが無い PC など)相手に見せる */
     int   noSleep;              /* 1 = 接続されている間はスリープさせず、画面も消さない */
+    int   audio;                /* 1 = 音を鳴らす(相手も「音を鳴らす」にしていれば、この PC の音を送る) */
     int   kbps;                 /* 映像のビットレート(kbps)。0 = 絵の大きさから決める */
     int   maxFps;               /* 0 = 画面の書き換えの速さまで */
     int   qMove;                /* 動いている間の画質(0〜100。CODECAPI_AVEncCommonQuality) */
@@ -109,6 +110,7 @@ extern int    g_testCursor;     /* -testcursor: 1 = hidden、2 = none */
 extern BOOL   g_forceGdi;       /* -gdi: DXGI を使わず GDI で取り込む */
 extern BOOL   g_forceSoftEnc;   /* -softenc: GPU のエンコーダを使わない */
 extern WCHAR  g_testDump[MAX_PATH]; /* -testdump: 検証用の絵を BMP に書く */
+extern BOOL   g_testAudio;      /* -testaudio: 鳴っている音の代わりに検証用の音を送る */
 
 void config_init(void);
 void config_load(void);
@@ -146,6 +148,27 @@ typedef struct VFrame {         /* 符号化した 1 フレーム(接続どう�
 } VFrame;
 
 void vframe_release(VFrame *f);
+
+/* ------------------------------------------------------------------ */
+/*  音(audio.c)                                                        */
+/* ------------------------------------------------------------------ */
+
+typedef struct AFrame {         /* 配る音の 1 かたまり(接続どうしで共有する) */
+    volatile LONG ref;
+    int     codec;              /* IIV_AUDIO_PCM / IIV_AUDIO_AAC */
+    UINT32  seq, frames;
+    LONG64  qpc;                /* 取り込んだ時刻 */
+    int     len;                /* 0 = 無音(PCM) */
+    BYTE    data[1];
+} AFrame;
+
+#define AQ_MAX 64               /* 接続ごとの音の待ち行列(PCM で 0.64 秒) */
+
+void audio_init(void);
+void audio_shutdown(void);
+void audio_update(void);                    /* 相手の求めか設定が変わった */
+BOOL audio_config_for(int codec, IivAudioConfig *ac, LONG *ver);
+void aframe_release(AFrame *f);
 
 typedef struct Client Client;
 
@@ -216,6 +239,13 @@ struct Client {
     volatile DWORD lastAckTick; /* 最後に返事が来た時刻(返事の無い相手を待ち続けないため) */
     LONG64  sentPresent[64];    /* 番号 % 64 → 画面に出た時刻(返事が来たら遅れを測る) */
 
+    /* 音(cs で守る。audioWanted は読み手が書く) */
+    volatile int audioWanted;   /* 相手が求めた方式(IIV_AUDIO_*。OFF = 要らない) */
+    LONG    audioCfgSent;       /* 送った IIV_S_AUDIO_CONFIG の版(audio_config_for。0 = まだ) */
+    AFrame *aq[AQ_MAX];         /* 送るのを待っている音 */
+    int     aqHead, aqCount;
+    LONG    audioFrames, audioDropped;
+
     /* カーソル(g_scr.lock で守る) */
     int     cursorVer;          /* 送った形の版 */
     POINT   cursorSent;         /* 送った位置 */
@@ -258,6 +288,7 @@ void power_update(void);                        /* main.c */
 BOOL server_video_wanted(BOOL *needKey, int *maxInflight, int *kbps);
 void server_video_deliver(VFrame *f);
 void server_cursor_changed(void);               /* カーソルの形・位置が変わった */
+void server_audio_deliver(AFrame *f);           /* audio.c: 音を求めている相手の待ち行列へ */
 
 /* filexfer.c: ファイルのコピー＆貼り付け(iiv-client と同じファイル) */
 #define FX_MAX          (16 << 20)          /* 1 つのメッセージの中身の上限 */

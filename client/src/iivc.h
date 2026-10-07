@@ -37,8 +37,8 @@
 #include "iivproto.h"
 
 #define APP_NAME      L"iiv-client"
-#define APP_VERSION   L"1.3.0"
-#define APP_RELEASE   L"v5"             /* リリースのタグ(タイトルに出す。リリースのたびに上げる) */
+#define APP_VERSION   L"1.4.0"
+#define APP_RELEASE   L"v6"             /* リリースのタグ(タイトルに出す。リリースのたびに上げる) */
 #define APP_TITLE     APP_NAME L" " APP_RELEASE
 
 #define WM_APP_CONNECTED  (WM_APP + 1)  /* 初期化まで済んだ */
@@ -74,6 +74,8 @@ typedef struct Config {
     BOOL  showStats;            /* タイトルに速さを出す */
     BOOL  noSleep;              /* 1 = つないでいる間はスリープさせず、画面も消さない */
     BOOL  renderGdi;            /* 1 = GDI で描く、0 = D3D11(既定) */
+    BOOL  audio;                /* 1 = 音を鳴らす(サーバーも「音を鳴らす」にしていれば) */
+    BOOL  audioSpeed;           /* 音質: 0 = 音質優先(PCM)、1 = 速度優先(AAC。帯域が少ない代わりに音質と遅れが落ちる) */
     int   theme;
     int   log;
     WCHAR history[MAX_HISTORY][256];
@@ -92,6 +94,8 @@ extern int   g_idleExitMs;          /* -idleexit ms: フレームが止まって
 extern BOOL  g_hookTest;            /* -hooktest: 注入したキーもフックで横取りする(検証用) */
 extern BOOL  g_fxOffer;             /* -fxoffer: つながったら、今クリップボードにあるファイルを渡す(検証用) */
 extern BOOL  g_fxNoWatch;           /* -fxnowatch: コピーしたファイルを渡さない(検証用) */
+extern WCHAR g_audioDump[MAX_PATH]; /* -audiodump: 受け取った音を WAV に書く(検証用) */
+extern BOOL  g_audioMute;           /* -audiomute: 音量 0 で鳴らす(検証用) */
 
 /* fwrules.c: Windows ファイアウォールの、この exe の規則(iiv-server と同じファイル) */
 typedef struct { int count, allow, block; long allowProfiles, blockProfiles; } FwInfo;
@@ -145,6 +149,7 @@ typedef struct ConnParams {
     char  password[PW_MAX];
     int   quality;
     BOOL  viewOnly;
+    int   audio;                /* IIV_AUDIO_*(OFF = 鳴らさない) */
 } ConnParams;
 
 BOOL conn_parse_host(const WCHAR *in, WCHAR *host, int hostCap, int *port);
@@ -161,6 +166,8 @@ void conn_frame_shown(UINT32 frame, LONG64 recvQpc);           /* 表示した(�
 void conn_send_clipboard(const char *utf8, int len);            /* こちらのクリップボードが変わった */
 void conn_send_files(HDROP hd);                                 /* こちらでファイルがコピーされた */
 void conn_reset_decoder(void);                                  /* 描画の方式が変わった: 次のフレームで復号器を作り直す */
+void conn_set_audio(int codec);                                 /* IIV_AUDIO_*(OFF = 止める) */
+int  audio_codec_from_cfg(void);                                /* g_cfg の「音を鳴らす」と音質 → IIV_AUDIO_* */
 const WCHAR *conn_last_error(void);
 BOOL conn_auth_failed(void);
 BOOL conn_needs_password(void);
@@ -186,6 +193,15 @@ BOOL vdec_is_gpu(void);
 BOOL vdec_decode(const BYTE *data, int len, BOOL *gotFrame);    /* 復号できたら fb に書いて *gotFrame = TRUE */
 void vdec_close(void);
 const WCHAR *vdec_name(void);
+
+/* audio.c: 「音を鳴らす」 */
+void audio_on_config(const IivAudioConfig *ac);                 /* 通信のスレッドから */
+void audio_on_packet(const BYTE *p, unsigned n);                /* 通信のスレッドから(IivAudioHead + 中身) */
+void audio_stop(void);
+void audio_reset_status(void);
+int  audio_server_status(void);                                 /* IIV_AS_*。-1 = まだ何も来ていない */
+BOOL audio_playing(void);
+void audio_stats(WCHAR *s, int cap);
 
 /* ------------------------------------------------------------------ */
 /*  表示(view.c)                                                       */

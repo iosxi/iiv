@@ -15,3 +15,5 @@
 #define IDC_RENDER       1010
 #define IDC_FWREMOVE     1011
 #define IDC_NOSLEEP      1012
+#define IDC_AUDIO        1013
+#define IDC_AUDIOQ       1014

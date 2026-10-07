@@ -12,7 +12,7 @@ IDI_APP ICON "iiv-client.ico"
 // ------------------------------------------------------------------
 //  接続の画面
 // ------------------------------------------------------------------
-IDD_CONNECT DIALOGEX 0, 0, 280, 222
+IDD_CONNECT DIALOGEX 0, 0, 280, 240
 STYLE DS_SHELLFONT | DS_CENTER | DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
 EXSTYLE WS_EX_APPWINDOW
 CAPTION "iiv-client"
@@ -29,22 +29,25 @@ BEGIN
     COMBOBOX        IDC_QUALITY, 84, 75, 184, 80, CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
     LTEXT           "描画(&G):", -1, 12, 95, 70, 9
     COMBOBOX        IDC_RENDER, 84, 93, 184, 60, CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
-    AUTOCHECKBOX    "見るだけ(キー・マウスを送らない)(&V)", IDC_VIEWONLY, 84, 113, 184, 10
-    AUTOCHECKBOX    "全画面で開く(&F)", IDC_FULLSCREEN, 84, 127, 184, 10
-    AUTOCHECKBOX    "つないでいる間はスリープさせず、画面も消さない(&Z)", IDC_NOSLEEP, 84, 141, 184, 10
-    LTEXT           "", IDC_ERROR, 12, 158, 256, 36, SS_NOPREFIX
+    LTEXT           "音(&U):", -1, 12, 113, 70, 9
+    AUTOCHECKBOX    "鳴らす", IDC_AUDIO, 84, 112, 50, 10
+    COMBOBOX        IDC_AUDIOQ, 136, 111, 132, 60, CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+    AUTOCHECKBOX    "見るだけ(キー・マウスを送らない)(&V)", IDC_VIEWONLY, 84, 131, 184, 10
+    AUTOCHECKBOX    "全画面で開く(&F)", IDC_FULLSCREEN, 84, 145, 184, 10
+    AUTOCHECKBOX    "つないでいる間はスリープさせず、画面も消さない(&Z)", IDC_NOSLEEP, 84, 159, 184, 10
+    LTEXT           "", IDC_ERROR, 12, 176, 256, 36, SS_NOPREFIX
 
-    PUSHBUTTON      "", IDC_FWREMOVE, 12, 202, 136, 14
-    DEFPUSHBUTTON   "接続(&O)", IDOK, 156, 202, 54, 14
-    PUSHBUTTON      "キャンセル", IDCANCEL, 214, 202, 54, 14
+    PUSHBUTTON      "", IDC_FWREMOVE, 12, 220, 136, 14
+    DEFPUSHBUTTON   "接続(&O)", IDOK, 156, 220, 54, 14
+    PUSHBUTTON      "キャンセル", IDCANCEL, 214, 220, 54, 14
 END
 
 // ------------------------------------------------------------------
 //  版
 // ------------------------------------------------------------------
 VS_VERSION_INFO VERSIONINFO
-FILEVERSION     1, 3, 0, 0
-PRODUCTVERSION  1, 3, 0, 0
+FILEVERSION     1, 4, 0, 0
+PRODUCTVERSION  1, 4, 0, 0
 FILEOS          VOS_NT_WINDOWS32
 FILETYPE        VFT_APP
 BEGIN
@@ -54,11 +57,11 @@ BEGIN
         BEGIN
             VALUE "CompanyName",      "iosxi"
             VALUE "FileDescription",  "iiv-client (リモート デスクトップ)"
-            VALUE "FileVersion",      "1.3.0"
+            VALUE "FileVersion",      "1.4.0"
             VALUE "InternalName",     "iiv-client"
             VALUE "OriginalFilename", "iiv-client.exe"
             VALUE "ProductName",      "iiv"
-            VALUE "ProductVersion",   "1.3.0"
+            VALUE "ProductVersion",   "1.4.0"
         END
     END
     BLOCK "VarFileInfo"

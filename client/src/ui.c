@@ -126,6 +126,11 @@ static INT_PTR CALLBACK dlg_proc(HWND dlg, UINT msg, WPARAM wp, LPARAM lp)
         SendDlgItemMessageW(dlg, IDC_RENDER, CB_ADDSTRING, 0, (LPARAM)L"GDI(メモリが少ない)");
         SendDlgItemMessageW(dlg, IDC_RENDER, CB_ADDSTRING, 0, (LPARAM)L"GPU(おすすめ。縮めても文字がきれい)");
         SendDlgItemMessageW(dlg, IDC_RENDER, CB_SETCURSEL, g_cfg.renderGdi ? 0 : 1, 0);
+        CheckDlgButton(dlg, IDC_AUDIO, g_cfg.audio ? BST_CHECKED : BST_UNCHECKED);
+        SendDlgItemMessageW(dlg, IDC_AUDIOQ, CB_ADDSTRING, 0, (LPARAM)L"音質優先(そのまま送る)");
+        SendDlgItemMessageW(dlg, IDC_AUDIOQ, CB_ADDSTRING, 0, (LPARAM)L"速度優先(音質を落として軽く)");
+        SendDlgItemMessageW(dlg, IDC_AUDIOQ, CB_SETCURSEL, g_cfg.audioSpeed ? 1 : 0, 0);
+        EnableWindow(GetDlgItem(dlg, IDC_AUDIOQ), g_cfg.audio);
         CheckDlgButton(dlg, IDC_VIEWONLY, g_cfg.viewOnly ? BST_CHECKED : BST_UNCHECKED);
         CheckDlgButton(dlg, IDC_FULLSCREEN, g_cfg.fullscreen ? BST_CHECKED : BST_UNCHECKED);
         CheckDlgButton(dlg, IDC_NOSLEEP, g_cfg.noSleep ? BST_CHECKED : BST_UNCHECKED);
@@ -225,10 +230,16 @@ static INT_PTR CALLBACK dlg_proc(HWND dlg, UINT msg, WPARAM wp, LPARAM lp)
             g_cfg.viewOnly = IsDlgButtonChecked(dlg, IDC_VIEWONLY) == BST_CHECKED;
             g_cfg.fullscreen = IsDlgButtonChecked(dlg, IDC_FULLSCREEN) == BST_CHECKED;
             g_cfg.noSleep = IsDlgButtonChecked(dlg, IDC_NOSLEEP) == BST_CHECKED;
+            g_cfg.audio = IsDlgButtonChecked(dlg, IDC_AUDIO) == BST_CHECKED;
+            g_cfg.audioSpeed = SendDlgItemMessageW(dlg, IDC_AUDIOQ, CB_GETCURSEL, 0, 0) == 1;
             config_add_history(host);
             config_set_password(host, g_cfg.savePassword ? g_cfg.password : "");
             config_save();
             EndDialog(dlg, IDOK);
+            return TRUE;
+        }
+        if (LOWORD(wp) == IDC_AUDIO) {
+            EnableWindow(GetDlgItem(dlg, IDC_AUDIOQ), IsDlgButtonChecked(dlg, IDC_AUDIO) == BST_CHECKED);
             return TRUE;
         }
         if (LOWORD(wp) == IDC_FWREMOVE) {

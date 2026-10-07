@@ -29,3 +29,4 @@
 #define IDC_FWREMOVE     1023
 #define IDC_SHOWCURSOR   1024
 #define IDC_NOSLEEP      1025
+#define IDC_AUDIO        1026

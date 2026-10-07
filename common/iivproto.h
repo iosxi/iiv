@@ -16,6 +16,13 @@
  *  映像は押し出し式。サーバーは画面が変わるたびに H.264 の 1 フレーム(Annex B)を送る。
  *  クライアントは表示したフレームの番号を IIV_C_ACK で返す。サーバーは返事の無いフレームが
  *  IIV_MAX_INFLIGHT を超えたら次の符号化を待つ(その間の変化は次のフレームにまとまる)。
+ *
+ *  音(「音を鳴らす」。両方で有効にしたときだけ)
+ *    C→S  IIV_C_AUDIO     ほしい方式(IIV_AUDIO_*。OFF = 要らない)。つないだ後と、変えたときに送る
+ *    S→C  IIV_S_AUDIO_CONFIG  形と状態。サーバー側で切られていれば status で知らせ、何も送らない
+ *    S→C  IIV_S_AUDIO     鳴っている音。PCM は 10ms ずつ、AAC は 1024 サンプルずつ
+ *  サーバーは、音を求める相手が 1 人もいなければ取り込みを始めない(映像には何も足さない)。
+ *  古い版の相手は、知らない種類のメッセージを読み飛ばす。
  * ================================================================== */
 #ifndef IIVPROTO_H
 #define IIVPROTO_H
@@ -79,7 +86,19 @@ enum {
     IIV_S_CLIPBOARD,        /* UTF-8(CRLF) */
     IIV_S_FX,               /* u8 種類 + 中身(filexfer.c) */
     IIV_S_PING,             /* IivPing(往復の時間を測る) */
+    IIV_S_AUDIO_CONFIG,     /* IivAudioConfig */
+    IIV_S_AUDIO,            /* IivAudioHead + 中身(PCM: 16bit のサンプルを左右交互に。空 = 無音。AAC: raw の 1 フレーム) */
 };
+
+/* 音の方式 */
+#define IIV_AUDIO_OFF     0
+#define IIV_AUDIO_PCM     1             /* 音質優先: 16bit ステレオのまま(48kHz で 1.5Mbps)。遅れが増えない */
+#define IIV_AUDIO_AAC     2             /* 速度優先: AAC-LC 96kbps(帯域は PCM の 1/16。符号化と復号で 70〜90ms 遅れる) */
+
+/* IivAudioConfig の状態 */
+#define IIV_AS_OK         0
+#define IIV_AS_DISABLED   1             /* サーバーの「音を鳴らす」が切られている */
+#define IIV_AS_NODEVICE   2             /* サーバーで音を取り込めない(再生デバイスが無いなど) */
 
 #pragma pack(push, 1)
 typedef struct IivVideoConfig {
@@ -111,6 +130,20 @@ typedef struct IivCursorPos {
 typedef struct IivPing {
     long long      qpc;
 } IivPing;
+
+typedef struct IivAudioConfig {
+    unsigned char  codec;               /* IIV_AUDIO_*(OFF = 送らない) */
+    unsigned char  status;              /* IIV_AS_* */
+    unsigned char  channels;            /* 2 */
+    unsigned int   rate;                /* 44100 か 48000 */
+    unsigned short asc;                 /* AAC: AudioSpecificConfig(上位バイトから。例 0x1190 = LC・48kHz・2ch) */
+} IivAudioConfig;
+
+typedef struct IivAudioHead {
+    unsigned int   seq;                 /* 1 から増える番号(抜けたら捨てられた) */
+    unsigned int   frames;              /* この中身のサンプル数(1 チャンネルあたり) */
+    long long      captureQpc;          /* その音を取り込んだ時刻(サーバーの QPC。遅れの計測用) */
+} IivAudioHead;
 #pragma pack(pop)
 
 /* ------------------------------------------------------------------ */
@@ -127,6 +160,7 @@ enum {
     IIV_C_SAS,              /* 中身なし: Ctrl+Alt+Del */
     IIV_C_PONG,             /* IivPing を送り返す */
     IIV_C_SETTINGS,         /* IivSettings */
+    IIV_C_AUDIO,            /* IivAudioRequest */
 };
 
 #pragma pack(push, 1)
@@ -155,6 +189,10 @@ typedef struct IivMouse {
 typedef struct IivSettings {
     unsigned int   kbps;                /* 0 = サーバーに任せる */
 } IivSettings;
+
+typedef struct IivAudioRequest {
+    unsigned char  codec;               /* IIV_AUDIO_*(OFF = 要らない) */
+} IivAudioRequest;
 #pragma pack(pop)
 
 #endif

@@ -1,6 +1,11 @@
 """iiv-server と iiv-client を組み合わせて、速さ・遅れ・CPU を測る(同じ PC の中)。
 
     python tools/pairbench.py [--src video|static|move] [--fps 0] [--frames 600] [--quality auto] [--render gpu|gdi]
+                              [--audio off|quality|speed] [--realaudio]
+
+--audio を付けると「音を鳴らす」を両方で有効にする。サーバーは -testaudio(合成した音)、
+--realaudio なら鳴っている音を取り込む。クライアントは音量 0 で鳴らし(-audiomute)、
+受け取った音を build/test/bench.wav に書く。
 
 サーバーは ../server の iiv-server を -testsrc と検証用の ini(127.0.0.1:5999、パスワード bench)で動かす。
 クライアントは -exitafter で決まったフレーム数を受けたら終わる。両方のプロセスの CPU 時間を測り、
@@ -44,10 +49,14 @@ def main():
     ap.add_argument('--quality', default='auto')
     ap.add_argument('--render', default='gpu')
     ap.add_argument('--softenc', action='store_true')
+    ap.add_argument('--audio', default='off', choices=['off', 'quality', 'speed'])
+    ap.add_argument('--realaudio', action='store_true')
     a = ap.parse_args()
     os.makedirs(TEST, exist_ok=True)
     sargs = ['-testsrc'] + ([] if a.src == 'move' else [a.src]) + ['-testfps', str(a.fps)] + (['-softenc'] if a.softenc else [])
-    iivcheck.start_server(sargs, password='bench')
+    if a.audio != 'off' and not a.realaudio:
+        sargs.append('-testaudio')
+    iivcheck.start_server(sargs, password='bench', extra='audio=1\n' if a.audio != 'off' else '')
     spid = server_pid()
     cini = os.path.join(TEST, 'bench.ini')
     log = os.path.join(TEST, 'bench.log')
@@ -60,8 +69,10 @@ def main():
     si.wShowWindow = 4
     s0 = cpu_seconds(spid)
     t0 = time.perf_counter()
+    wav = os.path.join(TEST, 'bench.wav')
+    aargs = ['-audio', a.audio] + (['-audiomute', '-audiodump', wav] if a.audio != 'off' else [])
     p = subprocess.Popen([os.path.join(ROOT, 'iiv-client.exe'), '-ini', cini, '127.0.0.1:5999', '-password', 'bench',
-                          '-exitafter', str(a.frames), '-log'], startupinfo=si)
+                          '-exitafter', str(a.frames), '-log'] + aargs, startupinfo=si)
     c1 = None
     while p.poll() is None:
         c1 = cpu_seconds(p.pid) or c1
@@ -79,11 +90,14 @@ def main():
     sec, n, rate, by, mbps, dec = float(m[1]), int(m[2]), float(m[3]), int(m[4]), float(m[5]), float(m[6])
     ccpu = (c1 or 0) / sec * 100
     scpu = (s1 - s0) / dt * 100 if s0 is not None and s1 is not None else float('nan')
-    print(f'{a.src} {a.quality} {a.render}{" softenc" if a.softenc else ""}: {rate:.1f} フレーム/秒  {mbps:.1f} Mbps  1 フレーム {by / n / 1024:.0f} KB  '
+    print(f'{a.src} {a.quality} {a.render}{" softenc" if a.softenc else ""} 音 {a.audio}: {rate:.1f} フレーム/秒  {mbps:.1f} Mbps  1 フレーム {by / n / 1024:.0f} KB  '
           f'復号 {dec:.2f}ms  クライアントの CPU {ccpu:.0f}%(1 フレーム {ccpu * 10 / rate:.1f}ms)  サーバーの CPU {scpu:.0f}%')
     for l in iivcheck.server_log().splitlines():
-        if 'フレーム/秒' in l or '映像:' in l:
+        if 'フレーム/秒' in l or '映像:' in l or '音:' in l or '音を' in l:
             print('  サーバー:', l[24:])
+    for l in clog.splitlines():
+        if '音:' in l:
+            print('  クライアント:', l[24:])
     return 0
 
 

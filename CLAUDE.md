@@ -5,7 +5,7 @@ iiv は Windows 10 / 11 用のリモート デスクトップ。サーバー(`se
 `client/CLAUDE.md` に書く。
 
 ```
-common/   両方が使うファイル(通信の取り決め・圧縮・配色・ファイアウォール・ファイルのコピー)
+common/   両方が使うファイル(通信の取り決め・圧縮・配色・ファイアウォール・ファイルのコピー・AAC・WASAPI の ID)
 server/   iiv-server(src/、tools/、build.bat、iiv-server.exe)
 client/   iiv-client(src/、tools/、build.bat、iiv-client.exe)
 build.bat 両方をビルドする(server\build.bat と client\build.bat を順に呼ぶ)
@@ -38,9 +38,11 @@ build.bat 両方をビルドする(server\build.bat と client\build.bat を順�
 
 ### common/ のファイル
 
-`iivproto.h`(通信の取り決め)、`zlite.h` `zdeflate.c` `zinflate.c`、`theme.c` `fwrules.c` `filexfer.c`。
+`iivproto.h`(通信の取り決め)、`zlite.h` `zdeflate.c` `zinflate.c`、`theme.c` `fwrules.c` `filexfer.c`、
+`aac.c` `aac.h`(「音を鳴らす」の速度優先。符号化はサーバー、復号はクライアントが使う)、
+`wasapi.h`(WASAPI の ID。C では実体がどの .lib にも無いので、各 exe の audio.c がこれを読んで定義する)。
 両方の `build.bat` が `/Isrc /I..\common` を付けて `..\common\*.c` をコンパイルする。
-`theme.c` `fwrules.c` `filexfer.c` は `#include "app.h"` で、その exe のヘッダーを読む
+`theme.c` `fwrules.c` `filexfer.c` `aac.c` は `#include "app.h"` で、その exe のヘッダーを読む
 (`server/src/app.h` は `iiv.h`、`client/src/app.h` は `iivc.h`)。だから、この 3 つが使う関数や定数
 (`APP_NAME`、`log_printf`、`fx_host_send` など)は両方のヘッダーにそろえておく。
 **common/ を直したら両方をビルドし、両方の検証を通す。**
@@ -49,9 +51,14 @@ build.bat 両方をビルドする(server\build.bat と client\build.bat を順�
 
 - サーバー単体: `cd server && python tools/test.py`
 - 組み合わせ: `cd client && python tools/clientcheck.py`(`../server/iiv-server.exe` と `../server/tools/iivcheck.py` を使う)
-- 組み合わせの速さ: `cd client && python tools/pairbench.py`
+- 組み合わせの速さ: `cd client && python tools/pairbench.py [--audio off|quality|speed]`
+- 音を鳴らす: `cd client && python tools/audiocheck.py [--seconds 15]`(音は出さない。PCM は 1 サンプルずつ一致、
+  AAC は SNR、両方とも欠け・途切れ、片方が切られているとき、つないだままの切り替え)
+- 音の部品の下調べ: `server/tools/audioprobe.c`(`tools/build-tools.bat` で `server/build/mf/audioprobe.exe`。
+  `loop` / `render` / `aac`)
 - Python の出力は CP932 になるので、Git Bash から読むときは `PYTHONIOENCODING=utf-8` を付ける。
 - 検証は `-ini`(`build/test/` の検証用 ini)とポート 5999 で動かすので、利用者が普段使いで動かしている
   iiv-server(ポート 5960)とはぶつからない。
 - `.bat` は CRLF(ASCII だけ)。Git Bash の here-doc や sed でバックスラッシュを含む行を書き換えると壊れやすい。
-  Python のスクリプトで直すほうが確か。
+  Python のスクリプトで直すほうが確か。**そのスクリプトも Write ツールでファイルに書いてから実行する。**
+  here-doc や `python -c` で渡すと、`\a` がベル文字に、`\\n` が改行に化けた(2026-10-07 に 3 回。build-tools.bat と C のソースが壊れた)。

@@ -17,6 +17,7 @@ set "CFLAGS=/nologo /utf-8 /W3 /O2 /MT /D_CRT_SECURE_NO_WARNINGS"
 cl %CFLAGS% /Fobuild\mf\ /Febuild\mf\mfprobe.exe tools\mfprobe.c || exit /b 1
 cl %CFLAGS% /Fobuild\mf\ /Febuild\mf\mfenc.exe tools\mfenc.c || exit /b 1
 cl %CFLAGS% /Fobuild\mf\ /Febuild\mf\mfdec.exe tools\mfdec.c || exit /b 1
+cl %CFLAGS% /Fobuild\mf\ /Febuild\mf\audioprobe.exe tools\audioprobe.c || exit /b 1
 echo OK
 exit /b 0
 :novs

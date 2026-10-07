@@ -27,6 +27,7 @@
  *  -testresize N       -testsrc の N フレーム目で画面を 1280x720 に変える
  *  -testcursor hidden|none  -testsrc のカーソルを隠れた状態にする(none は形も無し)
  *  -testdump <file.bmp>  -testsrc の絵を開いたときに BMP に書く(相手が描いた絵と比べるため)
+ *  -testaudio          鳴っている音の代わりに検証用の音(左 = スイープ、右 = 1kHz)を送る(audio.c)
  *  -dryrun             入力を再現せずログに書く
  *  -gdi                DXGI を使わず GDI で取り込む
  *  -softenc            GPU のエンコーダを使わず、CPU(Windows 標準の H.264 エンコーダ)で符号化する
@@ -56,6 +57,7 @@ int   g_testCursor;
 BOOL  g_forceGdi;
 BOOL  g_forceSoftEnc;
 WCHAR g_testDump[MAX_PATH];
+BOOL  g_testAudio;
 HINSTANCE g_inst;
 
 static NOTIFYICONDATAW g_nid;
@@ -310,6 +312,7 @@ static LRESULT CALLBACK main_proc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp)
             start_listening();
         }
         if (old.display != g_cfg.display || old.kbps != g_cfg.kbps) video_reset();
+        if (old.audio != g_cfg.audio) audio_update();
         agent_status_update();
         return 0;
     }
@@ -427,6 +430,7 @@ int WINAPI wWinMain(HINSTANCE inst, HINSTANCE prev, LPWSTR cmdline, int show)
         else if (!lstrcmpiW(a, L"testresize") && i + 1 < argc) g_testResize = _wtoi(argv[++i]);
         else if (!lstrcmpiW(a, L"testcursor") && i + 1 < argc) g_testCursor = !lstrcmpiW(argv[++i], L"none") ? 2 : 1;
         else if (!lstrcmpiW(a, L"testdump") && i + 1 < argc) GetFullPathNameW(argv[++i], MAX_PATH, g_testDump, NULL);
+        else if (!lstrcmpiW(a, L"testaudio")) g_testAudio = TRUE;
     }
     if (argv) LocalFree(argv);
     config_init();
@@ -552,6 +556,7 @@ skip_mutex:
     }
 
     video_init();
+    audio_init();
     clip_init(g_mainWnd);
     start_listening();
     if (g_runMode != RUN_AGENT) {
@@ -566,6 +571,7 @@ skip_mutex:
     }
 
     server_stop();
+    audio_shutdown();
     video_shutdown();
     log_printf(L"iiv-server 終了");
     if (mutex) CloseHandle(mutex);
