@@ -1,5 +1,5 @@
 @echo off
-rem Build the test programs (tools\mfprobe.c, mfenc.c, mfdec.c) into build\mf.
+rem Build the test programs (tools\mfprobe.c, mfenc.c, mfdec.c, audioprobe.c, fxpaste.c) into build\mf.
 rem ASCII only and CRLF on purpose (see build.bat).
 setlocal
 if defined VCINSTALLDIR goto :build
@@ -18,6 +18,7 @@ cl %CFLAGS% /Fobuild\mf\ /Febuild\mf\mfprobe.exe tools\mfprobe.c || exit /b 1
 cl %CFLAGS% /Fobuild\mf\ /Febuild\mf\mfenc.exe tools\mfenc.c || exit /b 1
 cl %CFLAGS% /Fobuild\mf\ /Febuild\mf\mfdec.exe tools\mfdec.c || exit /b 1
 cl %CFLAGS% /Fobuild\mf\ /Febuild\mf\audioprobe.exe tools\audioprobe.c || exit /b 1
+cl %CFLAGS% /Fobuild\mf\ /Febuild\mf\fxpaste.exe tools\fxpaste.c || exit /b 1
 echo OK
 exit /b 0
 :novs

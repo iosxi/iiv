@@ -37,6 +37,7 @@ static BOOL             g_authFailed, g_needPw;
 static volatile LONG    g_active;
 static volatile LONG    g_connGen;     /* 接続ごとに増やす(ファイルの受け渡しで、前の接続宛てのものを断る) */
 static volatile LONG    g_fxOK;        /* 相手もファイルを受け渡せる */
+static volatile LONG    g_fxBatch;     /* 相手もまとめ読みと圧縮が分かる */
 static LONG64           g_qpf;
 static BOOL             g_vdecOk;
 static volatile LONG    g_decReset;    /* 描画の方式が変わった: 復号器を作り直す */
@@ -262,6 +263,8 @@ BOOL fx_host_send(int conn, int sub, const BYTE *p, int n)
     return send_msg(IIV_C_FX, &s, 1, p, n);
 }
 
+BOOL fx_host_batch_ok(int conn) { return conn == g_connGen && g_active && g_fxOK && g_fxBatch; }
+
 /* クライアントは利用者の権限で動いているので、なりすまさない */
 HANDLE fx_host_user_token(void) { return NULL; }
 
@@ -312,7 +315,7 @@ static BOOL handshake(void)
     hi.magic = IIV_MAGIC;
     hi.version = IIV_VERSION;
     hi.codecs = 1u << IIV_CODEC_H264;
-    hi.flags = IIV_HF_FILES;
+    hi.flags = IIV_HF_FILES | IIV_HF_FXBATCH;
     if (!send_all(&hi, sizeof(hi))) { set_error(L"サーバーへ送れませんでした。"); return FALSE; }
     if (!rd(&ch, sizeof(ch))) {
         set_error(L"サーバーが答えません。iiv-server ではないかもしれません(ポートを確かめてください)。");
@@ -347,6 +350,7 @@ static BOOL handshake(void)
     if (w.result != IIV_OK) { set_error(L"サーバーに断られました(%u)。", w.result); return FALSE; }
     if (w.flags & IIV_WF_VIEWONLY) g_p.viewOnly = TRUE;
     InterlockedExchange(&g_fxOK, (w.flags & IIV_WF_FILES) != 0);
+    InterlockedExchange(&g_fxBatch, (w.flags & IIV_WF_FXBATCH) != 0);
     MultiByteToWideChar(CP_UTF8, 0, name, -1, g_rm.name, ARRAYSIZE(g_rm.name));
     return TRUE;
 }
@@ -523,7 +527,9 @@ static BOOL message_loop(void)
                 switch (p[0]) {
                 case FX_FILES: if (fx_usable()) fx_offer_received(g_connGen, p + 1, (int)n - 1); break;
                 case FX_READ:  if (fx_usable()) fx_request(g_connGen, p + 1, (int)n - 1); break;
+                case FX_READMANY: if (fx_usable()) fx_request_many(g_connGen, p + 1, (int)n - 1); break;
                 case FX_DATA:  fx_deliver(g_connGen, p + 1, (int)n - 1); break;
+                case FX_DATAZ: fx_deliver_z(g_connGen, p + 1, (int)n - 1); break;
                 }
             }
             break;

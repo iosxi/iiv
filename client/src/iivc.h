@@ -37,8 +37,8 @@
 #include "iivproto.h"
 
 #define APP_NAME      L"iiv-client"
-#define APP_VERSION   L"1.4.0"
-#define APP_RELEASE   L"v7"             /* リリースのタグ(タイトルに出す。リリースのたびに上げる) */
+#define APP_VERSION   L"1.5.0"
+#define APP_RELEASE   L"v8"             /* リリースのタグ(タイトルに出す。リリースのたびに上げる) */
 #define APP_TITLE     APP_NAME L" " APP_RELEASE
 
 #define WM_APP_CONNECTED  (WM_APP + 1)  /* 初期化まで済んだ */
@@ -174,18 +174,22 @@ BOOL conn_needs_password(void);
 
 /* filexfer.c: ファイルのコピー＆貼り付け(iiv-server と同じファイル) */
 #define FX_MAX          (16 << 20)          /* 1 つのメッセージの中身の上限 */
-enum { FX_HELLO = 1, FX_FILES, FX_READ, FX_DATA };
+enum { FX_HELLO = 1, FX_FILES, FX_READ, FX_DATA, FX_READMANY, FX_DATAZ };
+#define FXF_DEFLATE     1u                  /* FX_READ・FX_READMANY の印: 圧縮して返してよい */
 BOOL fx_make_offer(const int *conns, int nconn, HDROP hd, BYTE **out, int *outLen);
 BOOL fx_make_offer_paths(const int *conns, int nconn, const WCHAR *paths, BYTE **out, int *outLen);
 WCHAR *fx_hdrop_paths(HDROP hd);
 HANDLE fx_host_user_token(void);
 void fx_request(int conn, const BYTE *p, int n);
 void fx_deliver(int conn, const BYTE *p, int n);
+void fx_request_many(int conn, const BYTE *p, int n);
+void fx_deliver_z(int conn, const BYTE *p, int n);
 void fx_conn_closed(int conn);
 void fx_offer_received(int conn, const BYTE *p, int n);
 BOOL fx_clipboard_is_ours(void);
 void fx_stop(void);
 BOOL fx_host_send(int conn, int sub, const BYTE *p, int n);
+BOOL fx_host_batch_ok(int conn);       /* 相手もまとめ読みと圧縮が分かる */
 
 /* vdec.c: d3dDevice があれば GPU(DXVA)で復号して view_submit_nv12 へ、無ければ CPU で fb へ */
 BOOL vdec_open(int w, int h, void *d3dDevice);

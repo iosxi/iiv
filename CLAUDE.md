@@ -54,6 +54,11 @@ build.bat 両方をビルドする(server\build.bat と client\build.bat を順�
 - 組み合わせの速さ: `cd client && python tools/pairbench.py [--audio off|quality|speed]`
 - 音を鳴らす: `cd client && python tools/audiocheck.py [--seconds 15]`(音は出さない。PCM は 1 サンプルずつ一致、
   AAC は SNR、両方とも欠け・途切れ、片方が切られているとき、つないだままの切り替え)
+- ファイルの受け渡しの速さと中身の一致: `cd server && python tools/fxbench.py --explorer [--old <古い版の exe の置き場所>] [--files 1000 | --big 10] [--rtt 40] [--mbps 20]`。
+  遅い回線をまねる中継を挟み、本物の iiv-client が置いた一覧を `tools/fxpaste.c`(エクスプローラーの貼り付けと同じく
+  貼り付け先の IDropTarget へ落とす)で貼り付ける。先に `server/tools/build-tools.bat` で fxpaste.exe を作る。
+  古い版は `git show v7:server/iiv-server.exe > build/v7/iiv-server.exe` のように取り出す。クリップボードを使う
+  (元の文字は戻す)。PowerShell の InvokeVerb('Paste') と IFileOperation::CopyItems は仮想のファイルを貼り付けられなかった。
 - 音の部品の下調べ: `server/tools/audioprobe.c`(`tools/build-tools.bat` で `server/build/mf/audioprobe.exe`。
   `loop` / `render` / `aac`)
 - Python の出力は CP932 になるので、Git Bash から読むときは `PYTHONIOENCODING=utf-8` を付ける。

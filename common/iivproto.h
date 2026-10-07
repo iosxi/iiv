@@ -23,6 +23,10 @@
  *    S→C  IIV_S_AUDIO     鳴っている音。PCM は 10ms ずつ、AAC は 1024 サンプルずつ
  *  サーバーは、音を求める相手が 1 人もいなければ取り込みを始めない(映像には何も足さない)。
  *  古い版の相手は、知らない種類のメッセージを読み飛ばす。
+ *
+ *  ファイルのコピー＆貼り付け(IIV_S_FX / IIV_C_FX。中身の形は filexfer.c)
+ *    両方が IIV_HF_FXBATCH / IIV_WF_FXBATCH を出したときだけ、小さいファイルをまとめて読み
+ *    (FX_READMANY)、中身を圧縮して返す(FX_DATAZ)。片方が古ければ、1 ファイルずつ圧縮せずに送る。
  * ================================================================== */
 #ifndef IIVPROTO_H
 #define IIVPROTO_H
@@ -54,6 +58,7 @@ typedef struct IivHello {
     unsigned int   flags;               /* IIV_HF_* */
 } IivHello;
 #define IIV_HF_FILES      1u            /* ファイルのコピー＆貼り付けができる */
+#define IIV_HF_FXBATCH    2u            /* ファイルのまとめ読み(FX_READMANY)と圧縮(FX_DATAZ)が分かる */
 
 typedef struct IivChallenge {
     unsigned int   magic, version;
@@ -72,6 +77,7 @@ typedef struct IivWelcome {
 } IivWelcome;
 #define IIV_WF_VIEWONLY   1u
 #define IIV_WF_FILES      2u            /* サーバーもファイルを受け渡せる */
+#define IIV_WF_FXBATCH    4u            /* サーバーもまとめ読みと圧縮が分かる(IIV_HF_FXBATCH と同じ) */
 #pragma pack(pop)
 
 /* ------------------------------------------------------------------ */

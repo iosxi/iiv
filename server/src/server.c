@@ -163,7 +163,7 @@ static BOOL send_welcome(Client *c, unsigned result)
     name = utf16_to_utf8(host, &nlen);
     ZeroMemory(&w, sizeof(w));
     w.result = result;
-    w.flags = (c->viewOnly ? IIV_WF_VIEWONLY : 0) | IIV_WF_FILES;
+    w.flags = (c->viewOnly ? IIV_WF_VIEWONLY : 0) | IIV_WF_FILES | IIV_WF_FXBATCH;
     w.nameLen = (unsigned short)nlen;
     ok = send_raw(c, &w, sizeof(w)) && send_raw(c, name ? name : "", nlen);
     free(name);
@@ -215,6 +215,7 @@ static BOOL handshake(Client *c, const char *ip)
     }
     if (g_cfg.viewOnly) c->viewOnly = TRUE;
     c->fileXfer = (hi.flags & IIV_HF_FILES) != 0;
+    c->fxBatch = (hi.flags & IIV_HF_FXBATCH) != 0;
     if (!send_welcome(c, IIV_OK)) return FALSE;
 
     /* 一覧に入れ、キーフレームから受け取り始める */
@@ -423,7 +424,9 @@ static BOOL message_loop(Client *c)
                 switch (p[0]) {
                 case FX_FILES: if (fx_ok(c)) fx_offer_received(c->id, p + 1, (int)n - 1); break;
                 case FX_READ:  if (fx_ok(c)) fx_request(c->id, p + 1, (int)n - 1); break;
+                case FX_READMANY: if (fx_ok(c)) fx_request_many(c->id, p + 1, (int)n - 1); break;
                 case FX_DATA:  fx_deliver(c->id, p + 1, (int)n - 1); break;
+                case FX_DATAZ: fx_deliver_z(c->id, p + 1, (int)n - 1); break;
                 }
             }
             break;
@@ -511,6 +514,17 @@ BOOL fx_host_send(int conn, int sub, const BYTE *p, int n)
     ReleaseSRWLockShared(&g_scr.lock);
     if (!found) free(m);
     return found;
+}
+
+BOOL fx_host_batch_ok(int conn)
+{
+    Client *c;
+    BOOL    ok = FALSE;
+    AcquireSRWLockShared(&g_scr.lock);
+    for (c = g_scr.clients; c; c = c->next)
+        if (c->id == conn) { ok = c->active && !c->quit && c->fxBatch; break; }
+    ReleaseSRWLockShared(&g_scr.lock);
+    return ok;
 }
 
 static void send_fx_and_clip(Client *c)
