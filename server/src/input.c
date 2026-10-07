@@ -4,7 +4,13 @@
  *  両端とも Windows なので、キーはスキャン コード(拡張 = E0 付き)をそのまま
  *  SendInput する。物理的なキーの位置がそのまま伝わるので、配列の違いや IME の
  *  キー(半角/全角・変換・無変換・カタカナひらがな)で迷わない。スキャン コードで
- *  送りにくいキー(Pause、メディア・ブラウザのキー)は仮想キーで送る。
+ *  送りにくいキー(Pause、NumLock、メディア・ブラウザのキー)は仮想キーで送る。
+ *
+ *  NumLock: キーボードからは E0 無しの 45 が来るが、Windows は拡張の印を付けて
+ *  渡す(フックでも WM_KEYDOWN でも)。それをそのまま SCANCODE|EXTENDEDKEY で送ると
+ *  E0 45 になり、どのキーにも当たらない(フックに vk=FF で届き、NumLock が切り替わら
+ *  ない。2026-10-07 に実測)。仮想キーで送れば本物と同じ vk=90・拡張の印で届く。
+ *  ほかにも E0 付きでは何にも当たらないスキャン コードは、拡張の印を外して送る。
  *
  *  マウス: 絶対座標で SendInput する。座標の換算は画素の中心を指す
  *  ((2d+1)·65536)/(2w)(iivnc で実測。d·65535/(w-1) は 3840 幅で 1px ずれる点が出た)。
@@ -132,8 +138,22 @@ static void key_event(INPUT *in, WORD vk, WORD scan, DWORD flags)
 /* スキャン コードで送ると確かでないキー */
 static BOOL by_vk(WORD vk, WORD scan)
 {
-    if (vk == VK_PAUSE || scan == 0) return TRUE;
+    if (vk == VK_PAUSE || vk == VK_NUMLOCK || scan == 0) return TRUE;
     return (vk >= VK_BROWSER_BACK && vk <= VK_LAUNCH_APP2);
+}
+
+/* 送られてきたキー 1 つ(scan の 0x100 = 拡張)を INPUT にする */
+static void key_input(INPUT *in, WORD vk, WORD scanx, BOOL down)
+{
+    WORD  scan = (WORD)(scanx & 0xFF);
+    BOOL  ext = (scanx & 0x100) != 0;
+    DWORD up = down ? 0 : KEYEVENTF_KEYUP;
+    if (by_vk(vk, scan)) {
+        key_event(in, vk, scan, (ext ? KEYEVENTF_EXTENDEDKEY : 0) | up);
+        return;
+    }
+    if (ext && !MapVirtualKeyW(0xE000 | scan, MAPVK_VSC_TO_VK_EX) && MapVirtualKeyW(scan, MAPVK_VSC_TO_VK_EX)) ext = FALSE;
+    key_event(in, 0, scan, KEYEVENTF_SCANCODE | (ext ? KEYEVENTF_EXTENDEDKEY : 0) | up);
 }
 
 void input_key(Client *c, const IivKey *k)
@@ -141,8 +161,6 @@ void input_key(Client *c, const IivKey *k)
     InputState *s = state_of(c);
     INPUT in[2];
     WORD  scan = (WORD)(k->scan & 0xFF), vk = k->vk;
-    BOOL  ext = (k->scan & 0x100) != 0;
-    DWORD fl;
     int   i;
 
     if (g_dryRun) log_printf(L"[dryrun-key] %s scan=%X vk=%X", k->down ? L"down" : L"up", k->scan, k->vk);
@@ -155,13 +173,7 @@ void input_key(Client *c, const IivKey *k)
         LeaveCriticalSection(&g_cs);
         return;
     }
-    if (by_vk(vk, scan)) {
-        fl = (ext ? KEYEVENTF_EXTENDEDKEY : 0) | (k->down ? 0 : KEYEVENTF_KEYUP);
-        key_event(&in[0], vk, scan, fl);
-    } else {
-        fl = KEYEVENTF_SCANCODE | (ext ? KEYEVENTF_EXTENDEDKEY : 0) | (k->down ? 0 : KEYEVENTF_KEYUP);
-        key_event(&in[0], 0, scan, fl);
-    }
+    key_input(&in[0], vk, k->scan, k->down);
     /* 押したままのキーを覚える(切れたときに離すため) */
     for (i = 0; i < s->nkeys; i++) if (s->scan[i] == k->scan && s->vk[i] == vk) break;
     if (k->down && i == s->nkeys && s->nkeys < MAX_PRESSED) { s->scan[s->nkeys] = k->scan; s->vk[s->nkeys] = vk; s->nkeys++; }
@@ -183,12 +195,7 @@ void input_release_all(Client *c)
     INPUT in[MAX_PRESSED + 8];
     int   n = 0, i;
     EnterCriticalSection(&g_cs);
-    for (i = 0; i < s->nkeys; i++) {
-        WORD scan = (WORD)(s->scan[i] & 0xFF), vk = s->vk[i];
-        DWORD ext = (s->scan[i] & 0x100) ? KEYEVENTF_EXTENDEDKEY : 0;
-        if (by_vk(vk, scan)) key_event(&in[n++], vk, scan, ext | KEYEVENTF_KEYUP);
-        else key_event(&in[n++], 0, scan, KEYEVENTF_SCANCODE | ext | KEYEVENTF_KEYUP);
-    }
+    for (i = 0; i < s->nkeys; i++) key_input(&in[n++], s->vk[i], s->scan[i], FALSE);
     if (s->buttons & IIV_MB_LEFT)   { ZeroMemory(&in[n], sizeof(INPUT)); in[n].type = INPUT_MOUSE; in[n++].mi.dwFlags = MOUSEEVENTF_LEFTUP; }
     if (s->buttons & IIV_MB_MIDDLE) { ZeroMemory(&in[n], sizeof(INPUT)); in[n].type = INPUT_MOUSE; in[n++].mi.dwFlags = MOUSEEVENTF_MIDDLEUP; }
     if (s->buttons & IIV_MB_RIGHT)  { ZeroMemory(&in[n], sizeof(INPUT)); in[n].type = INPUT_MOUSE; in[n++].mi.dwFlags = MOUSEEVENTF_RIGHTUP; }

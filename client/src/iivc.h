@@ -38,7 +38,7 @@
 
 #define APP_NAME      L"iiv-client"
 #define APP_VERSION   L"1.4.0"
-#define APP_RELEASE   L"v6"             /* リリースのタグ(タイトルに出す。リリースのたびに上げる) */
+#define APP_RELEASE   L"v7"             /* リリースのタグ(タイトルに出す。リリースのたびに上げる) */
 #define APP_TITLE     APP_NAME L" " APP_RELEASE
 
 #define WM_APP_CONNECTED  (WM_APP + 1)  /* 初期化まで済んだ */

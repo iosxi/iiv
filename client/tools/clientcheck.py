@@ -133,6 +133,8 @@ def main():
         u.PostMessageW(h, 0x101, 0x41, (0x1E << 16) | 1 | (3 << 30))
         u.PostMessageW(h, 0x100, 0x25, (0x4B << 16) | 1 | (1 << 24))
         u.PostMessageW(h, 0x101, 0x25, (0x4B << 16) | 1 | (1 << 24) | (3 << 30))
+        u.PostMessageW(h, 0x100, 0x90, (0x45 << 16) | 1 | (1 << 24))         # NumLock(Windows は拡張の印を付けて渡す)
+        u.PostMessageW(h, 0x101, 0x90, (0x45 << 16) | 1 | (1 << 24) | (3 << 30))
         u.PostMessageW(h, 0x200, 0, (cy << 16) | cx)
         u.PostMessageW(h, 0x201, 1, (cy << 16) | cx)
         u.PostMessageW(h, 0x202, 0, (cy << 16) | cx)
@@ -143,8 +145,14 @@ def main():
         t.stop_server()
     log = t.server_log()
     keys = re.findall(r'\[dryrun-key\] (down|up) scan=(\w+) vk=(\w+)', log)
-    check(keys == [('down', '1E', '41'), ('up', '1E', '41'), ('down', '14B', '25'), ('up', '14B', '25')],
+    check(keys == [('down', '1E', '41'), ('up', '1E', '41'), ('down', '14B', '25'), ('up', '14B', '25'),
+                   ('down', '145', '90'), ('up', '145', '90')],
           'キー: スキャン コードと拡張の印', str(keys))
+    # 再現のしかた。NumLock を E0 45 のスキャン コードで送ると何のキーにもならないので、仮想キーで送る
+    sent = re.findall(r'\[dryrun\] key vk=(\w+) scan=(\w+) flags=(\w+)', log)
+    check(sent == [('00', '1E', '8'), ('00', '1E', 'A'), ('00', '4B', '9'), ('00', '4B', 'B'),
+                   ('90', '45', '1'), ('90', '45', '3')],
+          'キー: A・← はスキャン コード、NumLock は仮想キーで送る', str(sent))
     # ボタンを押す直前の移動で見る(本物のカーソルが新しく出た窓に重なっていると、その位置への移動が先に届く)
     before = log.split('flags=0002')[0]
     mvs = re.findall(r'\[dryrun\] mouse flags=C001 dx=(\d+) dy=(\d+)', before)
