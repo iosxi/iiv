@@ -2,7 +2,7 @@
 
     python tools/pairbench.py [--src video|static|move] [--fps 0] [--frames 600] [--quality auto] [--render gpu|gdi]
 
-サーバーは ../iiv-server を -testsrc と検証用の ini(127.0.0.1:5999、パスワード bench)で動かす。
+サーバーは ../server の iiv-server を -testsrc と検証用の ini(127.0.0.1:5999、パスワード bench)で動かす。
 クライアントは -exitafter で決まったフレーム数を受けたら終わる。両方のプロセスの CPU 時間を測り、
 クライアントのログの「検証の終わり」と、サーバーのログの 5 秒ごとの集計を出す。
 move = 文字が流れ四角が動く絵(既定の -testsrc)。
@@ -11,7 +11,7 @@ import argparse, ctypes, os, re, subprocess, sys, time
 from ctypes import wintypes as W
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-SROOT = os.path.join(ROOT, '..', 'iiv-server')
+SROOT = os.path.join(ROOT, '..', 'server')
 sys.path.insert(0, os.path.join(SROOT, 'tools'))
 import iivcheck  # noqa: E402
 

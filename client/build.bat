@@ -31,9 +31,9 @@ fxc /nologo /T ps_4_0 /E ps /O3 /Vn g_psCode /Fh build\shader_ps.h src\view.hlsl
 fxc /nologo /T ps_4_0 /E ps_nv12 /O3 /Vn g_psNv12Code /Fh build\shader_nv12.h src\view.hlsl >nul || exit /b 1
 rc /nologo /fo build\obj\iiv-client.res src\iiv-client.rc || exit /b 1
 
-set "SRC=src\main.c src\config.c src\conn.c src\vdec.c src\view.c src\clip.c src\ui.c src\theme.c src\zdeflate.c src\zinflate.c src\fwrules.c src\filexfer.c"
+set "SRC=src\main.c src\config.c src\conn.c src\vdec.c src\view.c src\clip.c src\ui.c ..\common\theme.c ..\common\zdeflate.c ..\common\zinflate.c ..\common\fwrules.c ..\common\filexfer.c"
 set "LIBS=user32.lib gdi32.lib shell32.lib comctl32.lib dwmapi.lib uxtheme.lib ole32.lib ws2_32.lib d3d11.lib dxgi.lib dxguid.lib imm32.lib advapi32.lib oleaut32.lib mfplat.lib mfuuid.lib strmiids.lib bcrypt.lib crypt32.lib"
-set "CFLAGS=/nologo /utf-8 /W4 /wd4201 /MT /DUNICODE /D_UNICODE /D_CRT_SECURE_NO_WARNINGS /D_WIN32_WINNT=0x0A00 /DWINVER=0x0A00 /Ibuild"
+set "CFLAGS=/nologo /utf-8 /W4 /wd4201 /MT /DUNICODE /D_UNICODE /D_CRT_SECURE_NO_WARNINGS /D_WIN32_WINNT=0x0A00 /DWINVER=0x0A00 /Ibuild /Isrc /I..\common"
 
 if /i "%~1"=="debug" goto :debug
 cl %CFLAGS% /O2 /Fobuild\obj\ /Feiiv-client.exe %SRC% build\obj\iiv-client.res /link /SUBSYSTEM:WINDOWS /MANIFEST:NO %LIBS% || exit /b 1

@@ -18,7 +18,7 @@
  *  こちらで描く。
  * ================================================================== */
 
-#include "iivc.h"
+#include "app.h"
 #include <dwmapi.h>
 #include <uxtheme.h>
 #include <vssym32.h>

@@ -1,6 +1,6 @@
 /* ==================================================================
  * filexfer.c - ファイルのコピー＆貼り付け(貼り付けたときに中身を送る)
- *              (iiv-server と iiv-client で同じファイル。先頭の #include だけ違う)
+ *              (iiv-server と iiv-client が共有する。"app.h" はそれぞれの src にある)
  *
  *  input-mouser の filecopy.c と同じ仕組み(リモート デスクトップのファイル コピーと同じ)。
  *
@@ -26,7 +26,7 @@
  * ================================================================== */
 
 #define COBJMACROS
-#include "iiv.h"
+#include "app.h"
 #include <shlobj.h>
 
 #define FC_MAX_ENTRIES 20000

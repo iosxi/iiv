@@ -3,7 +3,7 @@
 # iiv-server
 
 Windows 10 / 11 用のリモート デスクトップのサーバーです。この PC の画面を、ほかの PC の
-[iiv-client](https://github.com/iosxi/iiv-client) から見たり操作したりできるようにします。
+[iiv-client](../client/README.md) から見たり操作したりできるようにします。
 
 [iivnc-server](https://github.com/iosxi/iivnc-server)(VNC のサーバー)の後継で、**VNC の規格を捨てて**、
 画面を GPU の動画エンコーダ(H.264)で送ります。VNC のビューアからはつながりません。
@@ -13,7 +13,8 @@ Windows 10 / 11 用のリモート デスクトップのサーバーです。こ
   H.264 の符号化には、Windows に最初からある Media Foundation を使います。
 - **レジストリを使わない。** 設定は exe と同じ場所の `iiv-server.ini`(UTF-8 のテキスト)だけ。
 
-**v1 は最初の版です。** 下の「できないこと・確かめていないこと」も読んでください。
+入手は [iiv のリリース](https://github.com/iosxi/iiv/releases) から。iiv-client は**同じ版**のものを使ってください。
+作り始めたばかりなので、下の「できないこと・確かめていないこと」も読んでください。
 
 ## 使い方
 
@@ -96,4 +97,5 @@ ini だけの項目: `qmove`(動いている間の画質、既定 70)、`qstill`
 
 ## ビルド
 
-VS 2022 Build Tools(C/C++)があれば `build.bat`。検証用の道具は `tools\build-tools.bat`。
+VS 2022 Build Tools(C/C++)があれば `build.bat`(iiv-client と共有するソースは `../common`。リポジトリのルートの
+`build.bat` なら両方を作る)。検証用の道具は `tools\build-tools.bat`。

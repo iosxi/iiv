@@ -1,36 +1,24 @@
 # iiv-client の作業方針
 
-## リリース運用
+## このディレクトリについて
 
-**手順は共通の `~/.claude/CLAUDE.md`「修正が終わったら、リリースまで通す」に従う。**
-ここにはこのリポジトリ固有の事情だけを書く。
+リリース・版・`common/` の扱いはルートの `../CLAUDE.md` に書いてある。ここには iiv-client 固有のことだけを書く。
 
-- リモート: `https://github.com/iosxi/iiv-client.git`(`iosxi/iiv-client`)
-- ブランチ: **`master`**
-- 最新バージョンの確認: `git tag --sort=-v:refname | head -1`
-- リリースの添付物: **`iiv-client.exe`**。改名せず、そのまま `gh release create` に渡す。
-- バージョン: タグの `vN` とは別に、`src/iiv-client.rc` の VERSIONINFO、`src/iiv-client.manifest` の
-  `assemblyIdentity`、`src/iivc.h` の `APP_VERSION` がある。機能が変わったら全部上げる。
-- `src/iivc.h` の `APP_RELEASE`(L"vN")は接続の画面と表示の窓のタイトルに出る。**リリースのたびにタグと同じ vN にする。**
-- 前身は `../iivnc-client`(VNC のビューア。そのまま残す)。
+- `src/iivc.h` の `APP_RELEASE` は接続の画面と表示の窓のタイトルに出る。ファイルの版は `src/iiv-client.rc` の
+  VERSIONINFO、`src/iiv-client.manifest` の `assemblyIdentity`、`src/iivc.h` の `APP_VERSION`。
+- 前身は `../../iivnc-client`(VNC のビューア。そのまま残す)。
 
 ### exe を変更したとき
 
-ソースを直したら **`build.bat` で exe を作り直してからコミットする**。exe はリポジトリに追跡させている。
+ソースを直したら **`build.bat` で exe を作り直してからコミットする**(ルートの `build.bat` なら両方)。
 `build.bat` は `fxc` で `src/view.hlsl` の `vs`・`ps`・`ps_nv12` をバイト列(`build/shader_*.h`)にして埋め込む。
 アイコンは `python tools/make-icon.py`(Pillow で 1024px に描いて縮める)。サーバーは青いタワー型 PC と外へ出る矢印、接続中(`-active.ico`)は電源ボタンと矢印の縁が緑。クライアントは緑のノート PC と画面へ入る矢印。
 Pillow の `polygon(..., outline=, width=)` は縁を内側にしか描かない(白い矢印が細くなる)。縁は `line(..., joint="curve")` で
 輪郭をなぞってから塗りを重ねる。
 
-### iiv-server と同じファイル
-
-`src/iivproto.h`(通信の取り決め)、`src/zlite.h` `src/zdeflate.c` `src/zinflate.c`、
-`src/theme.c` `src/fwrules.c` `src/filexfer.c`(この 3 つは先頭の `#include` だけ違う)は `../iiv-server/src` と
-中身をそろえる。
-
 ## 動作確認について
 
-検証には `../iiv-server` の exe と `tools/iivcheck.py`(起動・停止)を使う。サーバーは `-testsrc`(合成した絵。
+検証には `../server` の exe と `../server/tools/iivcheck.py`(起動・停止)を使う。サーバーは `-testsrc`(合成した絵。
 入力はログに書くだけ)で動かすので、利用者の画面は写さず、入力も再現しない。
 
 - **`python tools/clientcheck.py`**: 止まった絵(サーバーが `-testdump` で書いた元の絵と、`-dump` で書いた絵の

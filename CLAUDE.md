@@ -1,0 +1,57 @@
+# iiv の作業方針
+
+iiv は Windows 10 / 11 用のリモート デスクトップ。サーバー(`server/`、iiv-server.exe)とクライアント
+(`client/`、iiv-client.exe)を 1 つのリポジトリで扱う。それぞれ固有のことは `server/CLAUDE.md` と
+`client/CLAUDE.md` に書く。
+
+```
+common/   両方が使うファイル(通信の取り決め・圧縮・配色・ファイアウォール・ファイルのコピー)
+server/   iiv-server(src/、tools/、build.bat、iiv-server.exe)
+client/   iiv-client(src/、tools/、build.bat、iiv-client.exe)
+build.bat 両方をビルドする(server\build.bat と client\build.bat を順に呼ぶ)
+```
+
+2026-10-07 までは `iosxi/iiv-server` と `iosxi/iiv-client` の 2 つのリポジトリだった。履歴は `server/` と `client/` の
+下へ移して取り込んである。古いタグ(サーバー v1〜v3、クライアント v1〜v4)は元のリポジトリにだけある。
+
+## リリース運用
+
+**手順は共通の `~/.claude/CLAUDE.md`「修正が終わったら、リリースまで通す」に従う。**
+ここにはこのリポジトリ固有の事情だけを書く。
+
+- リモート: `https://github.com/iosxi/iiv.git`(`iosxi/iiv`)
+- ブランチ: **`master`**
+- 最新バージョンの確認: `git tag --sort=-v:refname | head -1`
+- **版はサーバーとクライアントで 1 つ。** 片方しか変わっていなくても、リリースには
+  **`server/iiv-server.exe` と `client/iiv-client.exe` の両方**を付ける(同じ vN 同士が組み合わせられる、とする)。
+  改名せず、そのまま `gh release create` に渡す。
+- `server/src/iiv.h` と `client/src/iivc.h` の `APP_RELEASE`(L"vN")はタイトルに出る。
+  **リリースのたびに両方をタグと同じ vN にする。**
+- それとは別に、ファイルの版(`APP_VERSION`、`src/*.rc` の VERSIONINFO、`src/*.manifest` の `assemblyIdentity`)が
+  それぞれにある。その exe の機能が変わったら上げる。
+- 通信の取り決めを変えたら `common/iivproto.h` の `IIV_VERSION` を上げ、サーバーとクライアントを同じコミットで直す。
+
+### exe を変更したとき
+
+ソースを直したら **`build.bat`(ルート。両方を作る)で exe を作り直してからコミットする**。exe はリポジトリに追跡させている。
+片方だけなら `server\build.bat` か `client\build.bat` でもよい。
+
+### common/ のファイル
+
+`iivproto.h`(通信の取り決め)、`zlite.h` `zdeflate.c` `zinflate.c`、`theme.c` `fwrules.c` `filexfer.c`。
+両方の `build.bat` が `/Isrc /I..\common` を付けて `..\common\*.c` をコンパイルする。
+`theme.c` `fwrules.c` `filexfer.c` は `#include "app.h"` で、その exe のヘッダーを読む
+(`server/src/app.h` は `iiv.h`、`client/src/app.h` は `iivc.h`)。だから、この 3 つが使う関数や定数
+(`APP_NAME`、`log_printf`、`fx_host_send` など)は両方のヘッダーにそろえておく。
+**common/ を直したら両方をビルドし、両方の検証を通す。**
+
+## 動作確認について
+
+- サーバー単体: `cd server && python tools/test.py`
+- 組み合わせ: `cd client && python tools/clientcheck.py`(`../server/iiv-server.exe` と `../server/tools/iivcheck.py` を使う)
+- 組み合わせの速さ: `cd client && python tools/pairbench.py`
+- Python の出力は CP932 になるので、Git Bash から読むときは `PYTHONIOENCODING=utf-8` を付ける。
+- 検証は `-ini`(`build/test/` の検証用 ini)とポート 5999 で動かすので、利用者が普段使いで動かしている
+  iiv-server(ポート 5960)とはぶつからない。
+- `.bat` は CRLF(ASCII だけ)。Git Bash の here-doc や sed でバックスラッシュを含む行を書き換えると壊れやすい。
+  Python のスクリプトで直すほうが確か。

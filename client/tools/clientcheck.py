@@ -2,7 +2,7 @@
 
     python tools/clientcheck.py
 
-../iiv-server の exe と tools/iivcheck.py(起動・停止)を使う。クライアントは検証用の ini と
+../server の iiv-server.exe と tools/iivcheck.py(起動・停止)を使う。クライアントは検証用の ini と
 -dump / -exitafter / -idleexit で動かし、窓は前面に出さない(SW_SHOWNOACTIVATE)。
 入力は PostMessage でクライアントの窓へ直接送る(利用者のキーボード・マウスは使わない)。
 """
@@ -14,7 +14,7 @@ from PIL import Image
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 EXE = os.path.join(ROOT, 'iiv-client.exe')
 TEST = os.path.join(ROOT, 'build', 'test')
-sys.path.insert(0, os.path.join(ROOT, '..', 'iiv-server', 'tools'))
+sys.path.insert(0, os.path.join(ROOT, '..', 'server', 'tools'))
 import iivcheck as t  # noqa: E402
 
 ok = True

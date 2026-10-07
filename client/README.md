@@ -3,7 +3,7 @@
 # iiv-client
 
 Windows 10 / 11 用のリモート デスクトップのクライアントです。ほかの PC の画面を見たり操作したりします。
-相手は [iiv-server](https://github.com/iosxi/iiv-server) です。
+相手は [iiv-server](../server/README.md) です。
 
 [iivnc-client](https://github.com/iosxi/iivnc-client)(VNC のビューア)の後継で、**VNC の規格を捨てて**、
 画面を H.264 の動画として受け取り、GPU で復号して描きます。VNC のサーバーにはつながりません。
@@ -13,7 +13,8 @@ Windows 10 / 11 用のリモート デスクトップのクライアントです
   Media Foundation を使います(追加のコーデックは要りません)。
 - **レジストリを使わない。** 設定・接続先の履歴・覚えたパスワードは exe と同じ場所の `iiv-client.ini` だけ。
 
-**v1 は最初の版です。** 下の「できないこと・確かめていないこと」も読んでください。
+入手は [iiv のリリース](https://github.com/iosxi/iiv/releases) から。iiv-server は**同じ版**のものを使ってください。
+作り始めたばかりなので、下の「できないこと・確かめていないこと」も読んでください。
 
 ## 使い方
 
@@ -78,4 +79,5 @@ Windows 10 / 11 用のリモート デスクトップのクライアントです
 
 ## ビルド
 
-VS 2022 Build Tools(C/C++)があれば `build.bat`(シェーダーも `fxc` でバイト列にして埋め込む)。
+VS 2022 Build Tools(C/C++)があれば `build.bat`(シェーダーも `fxc` でバイト列にして埋め込む。iiv-server と共有する
+ソースは `../common`。リポジトリのルートの `build.bat` なら両方を作る)。

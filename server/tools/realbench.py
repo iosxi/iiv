@@ -17,7 +17,7 @@ import iivcheck  # noqa: E402
 
 EXE = os.path.join(ROOT, 'iiv-server.exe')
 TEST = os.path.join(ROOT, 'build', 'test')
-SRCWIN = os.path.join(ROOT, '..', 'iivnc-server', 'tools', 'srcwin.py')
+SRCWIN = os.path.join(ROOT, '..', '..', 'iivnc-server', 'tools', 'srcwin.py')
 
 
 def cpu_seconds(pid):

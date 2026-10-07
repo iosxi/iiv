@@ -1,0 +1,9 @@
+build/
+*.obj
+*.aps
+__pycache__/
+# 利用者の設定とログ(exe の隣にできる)
+iiv-server.ini
+iiv-server.log
+iiv-client.ini
+iiv-client.log

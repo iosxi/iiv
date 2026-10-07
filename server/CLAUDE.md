@@ -1,31 +1,19 @@
 # iiv-server の作業方針
 
-## リリース運用
+## このディレクトリについて
 
-**手順は共通の `~/.claude/CLAUDE.md`「修正が終わったら、リリースまで通す」に従う。**
-ここにはこのリポジトリ固有の事情だけを書く。
+リリース・版・`common/` の扱いはルートの `../CLAUDE.md` に書いてある。ここには iiv-server 固有のことだけを書く。
 
-- リモート: `https://github.com/iosxi/iiv-server.git`(`iosxi/iiv-server`)
-- ブランチ: **`master`**
-- 最新バージョンの確認: `git tag --sort=-v:refname | head -1`
-- リリースの添付物: **`iiv-server.exe`**。改名せず、そのまま `gh release create` に渡す。
-- バージョン: タグの `vN` とは別に、`src/iiv-server.rc` の VERSIONINFO、`src/iiv-server.manifest` の
-  `assemblyIdentity`、`src/iiv.h` の `APP_VERSION` / `APP_VERSION_A` がある。機能が変わったら全部上げる。
-- `src/iiv.h` の `APP_RELEASE`(L"vN")は設定画面のタイトルに出る。**リリースのたびにタグと同じ vN にする。**
-- 前身は `../iivnc-server`(VNC のサーバー。そのまま残す)。iiv は 2026-10-06 に VNC を捨てて作り始めた。
+- `src/iiv.h` の `APP_RELEASE` は設定画面のタイトルに出る。ファイルの版は `src/iiv-server.rc` の VERSIONINFO、
+  `src/iiv-server.manifest` の `assemblyIdentity`、`src/iiv.h` の `APP_VERSION` / `APP_VERSION_A`。
+- 前身は `../../iivnc-server`(VNC のサーバー。そのまま残す)。iiv は 2026-10-06 に VNC を捨てて作り始めた。
 
 ### exe を変更したとき
 
-ソースを直したら **`build.bat` で exe を作り直してからコミットする**。exe はリポジトリに追跡させている。
+ソースを直したら **`build.bat` で exe を作り直してからコミットする**(ルートの `build.bat` なら両方)。
 アイコンは `python tools/make-icon.py`(Pillow で 1024px に描いて縮める)。サーバーは青いタワー型 PC と外へ出る矢印、接続中(`-active.ico`)は電源ボタンと矢印の縁が緑。クライアントは緑のノート PC と画面へ入る矢印。
 Pillow の `polygon(..., outline=, width=)` は縁を内側にしか描かない(白い矢印が細くなる)。縁は `line(..., joint="curve")` で
 輪郭をなぞってから塗りを重ねる。
-
-### iiv-client と同じファイル
-
-`src/iivproto.h`(通信の取り決め)、`src/zlite.h` `src/zdeflate.c` `src/zinflate.c`、
-`src/theme.c` `src/fwrules.c` `src/filexfer.c`(この 3 つは先頭の `#include` だけ違う)は `../iiv-client/src` と
-中身をそろえる。片方を直したらもう片方へ写し、`diff` で確かめる。
 
 ## 動作確認について
 
@@ -34,12 +22,10 @@ Pillow の `polygon(..., outline=, width=)` は縁を内側にしか描かない
   動く絵 300 フレーム(`build/mf/mfdec.exe` で全部復号できるか)・止まった絵・大きさの変更・3 人同時・
   返事を返さない相手・でたらめなデータを確かめる。`tools/build-tools.bat` が `tools/mf*.c` を `build/mf` に作る。
 - **`python tools/realbench.py --scene office|video|idle [--ini "qmove=70;..."]`**: 実画面(DXGI)を `-dryrun` と
-  127.0.0.1:5913 で取り込み、iivnc の `../iivnc-server/tools/srcwin.py` の窓を出して、フレーム/秒・帯域・遅れ・CPU を測る。
-- クライアントと組み合わせた検証は `../iiv-client/tools/clientcheck.py`、速さは `../iiv-client/tools/pairbench.py`。
+  127.0.0.1:5913 で取り込み、iivnc の `../../iivnc-server/tools/srcwin.py` の窓を出して、フレーム/秒・帯域・遅れ・CPU を測る。
+- クライアントと組み合わせた検証は `../client/tools/clientcheck.py`、速さは `../client/tools/pairbench.py`。
 - 試験プログラム: `tools/mfprobe.c`(使えるエンコーダ・デコーダの一覧)、`tools/mfenc.c`(NV12 の連番を符号化。
   `cbr|qp|qp2|qps|q|qdyn`)、`tools/mfdec.c`(復号して PSNR、最後のフレームを書き出す)。
-- `.bat` は CRLF(ASCII だけ)。Git Bash の here-doc や sed でバックスラッシュを含む行を書き換えると壊れやすい
-  (2026-10-06 に何度か起きた)。Python のスクリプトをファイルに書いて直すほうが確か。
 
 ## 実測で分かったこと(2026-10-06、i7-12700KF・RTX 3070 Ti・Windows 11・4K 60Hz)
 
